@@ -1,0 +1,79 @@
+{
+  "schema": "hbtec-device-catalog",
+  "entries": [
+    {
+      "schema": "hbtec-device-catalog-entry",
+      "schema_version": 1,
+      "manufacturer": "Bayrol",
+      "model": "Poolmanager 5",
+      "device_type": "sonstiges",
+      "notes": "Poolchemie-Management mit Modbus TCP. Standard-Messwerte: pH, ORP (Redoxpotential), Chlor-Konzentration, Wassertemperatur, Alarme.",
+      "source_url": "https://www.tanbypools.co.uk/wp-content/uploads/2019/11/130520_PM5_Modbus_TCP_Protocol_EN.pdf",
+      "source_note": "Bayrol PM5 Modbus TCP Protocol (EN)",
+      "verified": 0,
+      "points": [
+        {
+          "name": "pH-Wert",
+          "description": "pH Messwert des Poolwassers",
+          "unit": "pH",
+          "address": 1000,
+          "function": 3,
+          "data_type": "float32",
+          "order": "ABCD",
+          "scale": 0.01,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        },
+        {
+          "name": "ORP (Redoxpotential)",
+          "description": "Oxidation-Reduction Potential - Desinfektionswirkung",
+          "unit": "mV",
+          "address": 1002,
+          "function": 3,
+          "data_type": "float32",
+          "order": "ABCD",
+          "scale": 1,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        },
+        {
+          "name": "Chlor-Konzentration",
+          "description": "Freies Chlor im Poolwasser",
+          "unit": "mg/l",
+          "address": 1004,
+          "function": 3,
+          "data_type": "float32",
+          "order": "ABCD",
+          "scale": 0.01,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        },
+        {
+          "name": "Wassertemperatur",
+          "description": "Temperatur des Poolwassers",
+          "unit": "°C",
+          "address": 1006,
+          "function": 3,
+          "data_type": "float32",
+          "order": "ABCD",
+          "scale": 0.1,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        },
+        {
+          "name": "Alarme / Status",
+          "description": "Allgemeine Alarmmeldungen und Systemstatus (Bitmaske)",
+          "unit": "Status",
+          "address": 1008,
+          "function": 3,
+          "data_type": "uint16",
+          "order": "AB",
+          "scale": 1,
+          "quantity_kind": "other",
+          "confidence": "mittel",
+          "caveats": "Bit 0: pH kritisch, Bit 1: ORP kritisch, Bit 2: Chlor kritisch, Bit 3: Temperatur kritisch, Bit 4-7: Systemfehler"
+        }
+      ]
+    }
+  ]
+}

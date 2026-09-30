@@ -1,0 +1,30 @@
+{
+  "schema": "hbtec-device-catalog-entry",
+  "schema_version": 1,
+  "manufacturer": "Eastron",
+  "model": "SDM630 / SDM630MCT",
+  "device_type": "energiezaehler",
+  "aliases": "SDM630Modbus, SDM630MCT (RS485-Variante des SDM630 mit Stromwandler-Eingaengen)",
+  "notes": "Alle Werte sind 32-Bit-IEEE754-Float ueber zwei Register (FC04, Eingaberegister), Wortreihenfolge Big-Endian (High-Register zuerst) = ABCD. Adressen hier sind bereits 0-basierte Protokolladressen (Modicon-Notation im Handbuch minus 30001). Werte sind direkt nutzbar, keine zusaetzliche Skalierung durch das Geraet noetig (scale=1). Maximal 40 Parameter (80 Register) pro Anfrage - bei mehr Datenpunkten aufteilen.",
+  "source_url": "https://www.eastroneurope.com/images/uploads/products/protocol/SDM630_MODBUS_Protocol.pdf",
+  "source_note": "Eastron SDM630Modbus Smart Meter Modbus Protocol Implementation V1.8 (Hersteller-PDF)",
+  "verified": false,
+  "points": [
+    {"name": "Spannung L1-N", "quantity_kind": "voltage", "function": 4, "address": 0, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L2-N", "quantity_kind": "voltage", "function": 4, "address": 2, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L3-N", "quantity_kind": "voltage", "function": 4, "address": 4, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Strom L1", "quantity_kind": "current", "function": 4, "address": 6, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L2", "quantity_kind": "current", "function": 4, "address": 8, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L3", "quantity_kind": "current", "function": 4, "address": 10, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Wirkleistung L1", "quantity_kind": "power", "function": 4, "address": 12, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L2", "quantity_kind": "power", "function": 4, "address": 14, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L3", "quantity_kind": "power", "function": 4, "address": 16, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Wirkleistung", "quantity_kind": "power", "function": 4, "address": 52, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Scheinleistung", "quantity_kind": "other", "function": 4, "address": 56, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "VA", "confidence": "hoch"},
+    {"name": "Gesamt-Blindleistung", "quantity_kind": "other", "function": 4, "address": 60, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "VAr", "confidence": "hoch"},
+    {"name": "Gesamt-Leistungsfaktor", "quantity_kind": "other", "function": 4, "address": 62, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "", "confidence": "hoch"},
+    {"name": "Netzfrequenz", "quantity_kind": "frequency", "function": 4, "address": 70, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "Hz", "confidence": "hoch"},
+    {"name": "Wirkenergie Bezug (Total Import)", "quantity_kind": "energy", "function": 4, "address": 72, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Einspeisung (Total Export)", "quantity_kind": "energy", "function": 4, "address": 74, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "hoch"}
+  ]
+}

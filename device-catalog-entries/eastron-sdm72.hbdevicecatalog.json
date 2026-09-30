@@ -1,0 +1,32 @@
+{
+  "schema": "hbtec-device-catalog-entry",
+  "schema_version": 1,
+  "manufacturer": "Eastron",
+  "model": "SDM72CT-M",
+  "device_type": "energiezaehler",
+  "aliases": "SDM72, SDM72-Modbus, SDM72CT (Stromwandler-Variante des SDM72 mit 3x /1 A oder /5 A CT-Eingaengen)",
+  "notes": "Alle Werte sind 32-Bit-IEEE754-Float ueber zwei Register (FC04, Eingaberegister), Wortreihenfolge Big-Endian (High-Register zuerst) = ABCD. Adressen hier sind bereits 0-basierte Protokolladressen (Modicon-Notation im Handbuch minus 30001), z.B. Dok-Beispiel 'Amps 1 Start address = 0006' bestaetigt Register 30007 = Protokolladresse 6. Werte sind direkt nutzbar, keine zusaetzliche Skalierung durch das Geraet noetig (scale=1). Maximal 30 Parameter pro Leseanfrage - bei mehr Datenpunkten aufteilen. Dies ist die CT-verbundene 3-Phasen-Variante (volle Spannungs-/Strom-/Leistungswerte pro Phase); die direkt angeschlossene Basisvariante SDM72D-M misst dagegen nur Summenwerte (siehe separater Katalogeintrag 'sdm72d').",
+  "source_url": "https://www.eastroneurope.com/images/uploads/products/protocol/1_SDM72CT-M_Protocol_V1.1.pdf",
+  "source_note": "Eastron SDM72CT-M User Manual, PART 3 Modbus Protocol V1.1 (Hersteller-PDF, Zhejiang Eastron Electronic Co., Ltd.)",
+  "verified": false,
+  "points": [
+    {"name": "Spannung L1-N", "quantity_kind": "voltage", "function": 4, "address": 0, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L2-N", "quantity_kind": "voltage", "function": 4, "address": 2, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L3-N", "quantity_kind": "voltage", "function": 4, "address": 4, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Strom L1", "quantity_kind": "current", "function": 4, "address": 6, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L2", "quantity_kind": "current", "function": 4, "address": 8, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L3", "quantity_kind": "current", "function": 4, "address": 10, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Wirkleistung L1", "quantity_kind": "power", "function": 4, "address": 12, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L2", "quantity_kind": "power", "function": 4, "address": 14, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L3", "quantity_kind": "power", "function": 4, "address": 16, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Wirkleistung", "quantity_kind": "power", "function": 4, "address": 52, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Scheinleistung", "quantity_kind": "other", "function": 4, "address": 56, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "VA", "confidence": "hoch"},
+    {"name": "Gesamt-Blindleistung", "quantity_kind": "other", "function": 4, "address": 60, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "VAr", "confidence": "hoch"},
+    {"name": "Gesamt-Leistungsfaktor", "quantity_kind": "other", "function": 4, "address": 62, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "", "confidence": "hoch"},
+    {"name": "Netzfrequenz", "quantity_kind": "frequency", "function": 4, "address": 70, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "Hz", "confidence": "hoch"},
+    {"name": "Wirkenergie Bezug (Import) seit Reset", "quantity_kind": "energy", "function": 4, "address": 72, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Einspeisung (Export) seit Reset", "quantity_kind": "energy", "function": 4, "address": 74, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Gesamt-Wirkenergie (Import+Export)", "quantity_kind": "energy", "function": 4, "address": 342, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Gesamt-Blindenergie", "quantity_kind": "energy", "function": 4, "address": 344, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kVArh", "confidence": "hoch"}
+  ]
+}

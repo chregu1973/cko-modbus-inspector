@@ -1,0 +1,33 @@
+{
+  "schema": "hbtec-device-catalog-entry",
+  "schema_version": 1,
+  "manufacturer": "Carlo Gavazzi",
+  "model": "EM21 / EM21-DIN (AV5/AV6)",
+  "device_type": "energiezaehler",
+  "aliases": "EM21 72D, EM21-DIN, EM21 AV5, EM21 AV6",
+  "notes": "Quelle: Carlo-Gavazzi-eigenes Dokument 'EM21 Communication Protocol' (Version 1 Revision 2, 2010). Alle mehrwortigen Werte sind INT32 (2 Register, 2er-Komplement bei negativen Werten). Laut Kapitel 2.1 des Handbuchs ist die Byte-Reihenfolge innerhalb eines Registers MSB->LSB, die Wortreihenfolge bei INT32 ist jedoch LSW->MSW (zuerst das niederwertige Register, dann das höherwertige). Das entspricht in diesem Tool der Byte-Reihenfolge 'CDAB' (Wort-Vertauschung, je Register weiterhin big-endian). PF und Hz sind INT16 (1 Register, Reihenfolge 'AB'). Die im Handbuch angegebenen 'Physical address'-Werte sind bereits 0-basierte, direkt verwendbare Modbus-Protokolladressen (= 'Modicom address' 3xxxxx minus 300001; Function Code 03h/04h liefern identische Werte). Skalierung laut 'Value weight': Spannung x10, Strom x1000, Leistung (W/VA/var) x10, Leistungsfaktor x1000, Frequenz ohne Faktor, Energie (kWh/kvarh) x10 - daher scale=0.1 bzw. 0.001 wie unten angegeben. Das EM21 besitzt nur einen Bezugs-/Importzähler (KWh(+) TOT); ein separates Einspeise-/Exportregister ist bei diesem Basismodell nicht dokumentiert.",
+  "source_url": "https://www.ccontrols.com/support/dp/CarloGavazziEM21.pdf",
+  "source_note": "Carlo Gavazzi EM21 Communication Protocol, Version 1 Revision 2, 29. Juli 2010 (Hersteller-PDF, Mirror von ccontrols.com; inhaltsgleich mit gavazzi.se/wp-content/uploads/2020/11/protokoll-em21-r-cp-v0r0-eng.pdf)",
+  "verified": false,
+  "points": [
+    {"name": "Spannung L1-N", "quantity_kind": "voltage", "function": 4, "address": 0, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L2-N", "quantity_kind": "voltage", "function": 4, "address": 2, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L3-N", "quantity_kind": "voltage", "function": 4, "address": 4, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "V", "confidence": "hoch"},
+    {"name": "Strom L1", "quantity_kind": "current", "function": 4, "address": 12, "data_type": "int32", "order": "CDAB", "scale": 0.001, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L2", "quantity_kind": "current", "function": 4, "address": 14, "data_type": "int32", "order": "CDAB", "scale": 0.001, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L3", "quantity_kind": "current", "function": 4, "address": 16, "data_type": "int32", "order": "CDAB", "scale": 0.001, "unit": "A", "confidence": "hoch"},
+    {"name": "Wirkleistung L1", "quantity_kind": "power", "function": 4, "address": 18, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L2", "quantity_kind": "power", "function": 4, "address": 20, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L3", "quantity_kind": "power", "function": 4, "address": 22, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Wirkleistung", "quantity_kind": "power", "function": 4, "address": 40, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Scheinleistung", "quantity_kind": "other", "function": 4, "address": 42, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "VA", "confidence": "hoch"},
+    {"name": "Gesamt-Blindleistung", "quantity_kind": "other", "function": 4, "address": 44, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "var", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L1", "quantity_kind": "other", "function": 4, "address": 46, "data_type": "int16", "order": "AB", "scale": 0.001, "unit": "", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L2", "quantity_kind": "other", "function": 4, "address": 47, "data_type": "int16", "order": "AB", "scale": 0.001, "unit": "", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L3", "quantity_kind": "other", "function": 4, "address": 48, "data_type": "int16", "order": "AB", "scale": 0.001, "unit": "", "confidence": "hoch"},
+    {"name": "Gesamt-Leistungsfaktor", "quantity_kind": "other", "function": 4, "address": 49, "data_type": "int16", "order": "AB", "scale": 0.001, "unit": "", "confidence": "hoch"},
+    {"name": "Netzfrequenz", "quantity_kind": "frequency", "function": 4, "address": 51, "data_type": "int16", "order": "AB", "scale": 1, "unit": "Hz", "confidence": "hoch"},
+    {"name": "Wirkenergie Bezug (Total Import)", "quantity_kind": "energy", "function": 4, "address": 52, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "kWh", "confidence": "hoch", "caveats": "EM21 besitzt keinen separaten Einspeise-/Exportzähler; nur dieser Bezugszähler ist dokumentiert."},
+    {"name": "Blindenergie Bezug (Total Import)", "quantity_kind": "energy", "function": 4, "address": 54, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "kvarh", "confidence": "hoch"}
+  ]
+}

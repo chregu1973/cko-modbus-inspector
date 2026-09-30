@@ -1,0 +1,23 @@
+{
+  "schema": "hbtec-device-catalog-entry",
+  "schema_version": 1,
+  "manufacturer": "Fronius",
+  "model": "Symo 3.7-3-M",
+  "device_type": "wechselrichter",
+  "aliases": "Symo 3.0-3-M / 4.5-3-M / 5.0-3-M (gleiche Datamanager-SunSpec-Registerkarte)",
+  "notes": "Gilt fuer Datamanager 2.0 (klassischer Symo, NICHT GEN24) mit SunSpec-Modelltyp 'Integer & SF'. Vor Nutzung Register 40069 pruefen: sollte 103 (dreiphasig) liefern. Skalierung erfolgt ueber separate SF-Register (Exponent zur Basis 10) - SF-Register einmalig auslesen und den resultierenden Faktor (10^SF) im Datenpunkt-Dialog eintragen.",
+  "source_url": "https://www.forum-fronius.pl/wp-content/uploads/asgarosforum/2812/Inverter_register_map.pdf",
+  "source_note": "Fronius Datamanager Register Map (Integer Inverter Model 101/102/103)",
+  "verified": false,
+  "points": [
+    {"name": "Modell-ID (Kontrolle)", "quantity_kind": "other", "function": 3, "address": 40069, "data_type": "uint16", "order": "AB", "scale": 1, "unit": "", "confidence": "hoch", "caveats": "Sollte 103 (dreiphasig) ergeben."},
+    {"name": "AC-Wirkleistung", "quantity_kind": "power", "function": 3, "address": 40083, "data_type": "int16", "order": "AB", "scale_factor_address": 40084, "scale_factor_type": "power_of_ten", "unit": "W", "confidence": "hoch"},
+    {"name": "AC-Netzfrequenz", "quantity_kind": "frequency", "function": 3, "address": 40085, "data_type": "uint16", "order": "AB", "scale_factor_address": 40086, "scale_factor_type": "power_of_ten", "unit": "Hz", "confidence": "hoch"},
+    {"name": "AC-Gesamtstrom", "quantity_kind": "current", "function": 3, "address": 40071, "data_type": "uint16", "order": "AB", "scale_factor_address": 40075, "scale_factor_type": "power_of_ten", "unit": "A", "confidence": "hoch"},
+    {"name": "AC-Spannung L1-N", "quantity_kind": "voltage", "function": 3, "address": 40079, "data_type": "uint16", "order": "AB", "scale_factor_address": 40082, "scale_factor_type": "power_of_ten", "unit": "V", "confidence": "hoch"},
+    {"name": "AC-Energie gesamt (Lifetime)", "quantity_kind": "energy", "function": 3, "address": 40093, "data_type": "uint32", "order": "ABCD", "scale_factor_address": 40095, "scale_factor_type": "power_of_ten", "unit": "Wh", "confidence": "hoch"},
+    {"name": "DC-Gesamtleistung", "quantity_kind": "power", "function": 3, "address": 40100, "data_type": "int16", "order": "AB", "scale_factor_address": 40101, "scale_factor_type": "power_of_ten", "unit": "W", "confidence": "hoch"},
+    {"name": "DC-Leistung String 1", "quantity_kind": "power", "function": 3, "address": 40274, "data_type": "uint16", "order": "AB", "scale_factor_address": 40257, "scale_factor_type": "power_of_ten", "unit": "W", "confidence": "mittel", "caveats": "Nur vorhanden, wenn Multiple-MPPT-Modell (160) implementiert ist."},
+    {"name": "DC-Leistung String 2", "quantity_kind": "power", "function": 3, "address": 40294, "data_type": "uint16", "order": "AB", "scale_factor_address": 40257, "scale_factor_type": "power_of_ten", "unit": "W", "confidence": "mittel", "caveats": "Nur vorhanden bei zweitem MPPT-Tracker."}
+  ]
+}

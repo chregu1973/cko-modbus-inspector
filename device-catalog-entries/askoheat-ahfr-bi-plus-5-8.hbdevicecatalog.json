@@ -1,0 +1,177 @@
+{
+  "schema": "hbtec-device-catalog",
+  "entries": [
+    {
+      "schema": "hbtec-device-catalog-entry",
+      "schema_version": 1,
+      "manufacturer": "Askoma",
+      "model": "ASKOHEAT+ AHFR-BI-plus-5.8",
+      "device_type": "hlk",
+      "notes": "Elektrischer Durchlauferhitzer / Heizelement mit Modbus TCP/RTU. Unterstützt Temperaturregelung, Leistungssteuerung und Energiemanagementsystem-Integration.",
+      "source_url": "https://www.download.askoma.com/askofamily_plus/modbus/askoheat-modbus.html",
+      "source_note": "ASKOHEAT+ Modbus Documentation",
+      "verified": 0,
+      "points": [
+        {
+          "name": "Temperatur Eingang",
+          "description": "Eingangstemperatur des Wassers",
+          "unit": "°C",
+          "address": 100,
+          "function": 3,
+          "data_type": "int16",
+          "order": "AB",
+          "scale": 0.1,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        },
+        {
+          "name": "Temperatur Ausgang",
+          "description": "Ausgangstemperatur des Wassers",
+          "unit": "°C",
+          "address": 101,
+          "function": 3,
+          "data_type": "int16",
+          "order": "AB",
+          "scale": 0.1,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        },
+        {
+          "name": "Temperatur Kessel",
+          "description": "Interne Kesseltemperatur",
+          "unit": "°C",
+          "address": 102,
+          "function": 3,
+          "data_type": "int16",
+          "order": "AB",
+          "scale": 0.1,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        },
+        {
+          "name": "Status / Fehler",
+          "description": "Gerätestatus und Fehlercodes (Bitmaske)",
+          "unit": "Status",
+          "address": 105,
+          "function": 3,
+          "data_type": "uint16",
+          "order": "AB",
+          "scale": 1,
+          "quantity_kind": "other",
+          "confidence": "mittel",
+          "caveats": "0=OK, andere Werte zeigen Fehler (Sensorfehler, Überhitzung, etc.)"
+        },
+        {
+          "name": "Heizelement-Schalter",
+          "description": "Steuerregister für Heizelemente (Bits 0-2 für 3 Relais)",
+          "unit": "Bits",
+          "address": 200,
+          "function": 3,
+          "data_type": "uint16",
+          "order": "AB",
+          "scale": 1,
+          "quantity_kind": "other",
+          "confidence": "mittel",
+          "caveats": "Schreibbar: Bit 0-2 schalten die drei Heizelement-Relais"
+        },
+        {
+          "name": "Leistungs-Sollwert",
+          "description": "Automatische Leistungsregelung des Heizelements",
+          "unit": "W",
+          "address": 201,
+          "function": 3,
+          "data_type": "uint16",
+          "order": "AB",
+          "scale": 1,
+          "quantity_kind": "other",
+          "confidence": "mittel",
+          "caveats": "Bereich: 250-30000 Watt, schreibbar für automatische Leistungsregelung"
+        },
+        {
+          "name": "Power-to-Heat Einspeiseleistung",
+          "description": "Leistung im Power-to-Heat-Betrieb (Eigenverbrauchsoptimierung)",
+          "unit": "W",
+          "address": 202,
+          "function": 3,
+          "data_type": "uint16",
+          "order": "AB",
+          "scale": 1,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        },
+        {
+          "name": "Leistung (Energie-Manager)",
+          "description": "Aktuelle Heizleistung im Energiemanagementsystem",
+          "unit": "W",
+          "address": 300,
+          "function": 3,
+          "data_type": "uint32",
+          "order": "ABCD",
+          "scale": 1,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        },
+        {
+          "name": "Energie heute",
+          "description": "Heutige Energiemenge",
+          "unit": "kWh",
+          "address": 310,
+          "function": 3,
+          "data_type": "uint32",
+          "order": "ABCD",
+          "scale": 0.1,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        },
+        {
+          "name": "Laufzeit",
+          "description": "Betriebsstunden des Geräts",
+          "unit": "h",
+          "address": 600,
+          "function": 3,
+          "data_type": "uint32",
+          "order": "ABCD",
+          "scale": 1,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        },
+        {
+          "name": "Anzahl Schaltvorgänge",
+          "description": "Zähler der Heizelement-Schaltvorgänge",
+          "unit": "Anzahl",
+          "address": 610,
+          "function": 3,
+          "data_type": "uint32",
+          "order": "ABCD",
+          "scale": 1,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        },
+        {
+          "name": "Temperatur Eingang (Float)",
+          "description": "Hochauflösende Eingangstemperatur (Floating-Point)",
+          "unit": "°C",
+          "address": 700,
+          "function": 3,
+          "data_type": "float32",
+          "order": "ABCD",
+          "scale": 1,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        },
+        {
+          "name": "Temperatur Ausgang (Float)",
+          "description": "Hochauflösende Ausgangstemperatur (Floating-Point)",
+          "unit": "°C",
+          "address": 702,
+          "function": 3,
+          "data_type": "float32",
+          "order": "ABCD",
+          "scale": 1,
+          "quantity_kind": "other",
+          "confidence": "mittel"
+        }
+      ]
+    }
+  ]
+}

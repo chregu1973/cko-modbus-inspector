@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f8fd">
+  <title>CKO Modbus Inspector</title>
+  <link rel="icon" href="{{ url_for('static', filename='cko_logo.ico') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+  <div class="app-shell">
+    <header class="topbar glass">
+      <div class="top-context">
+        <span>CKO Tools</span>
+        <strong>Modbus Inspector</strong>
+      </div>
+      <div class="top-actions">
+        <button id="aiSettingsBtn" class="chip-button" title="KI-Einstellungen (Online-Datenpunkt-Suche)">⚙ KI</button>
+        <span class="badge safe">Nur Lesen</span>
+        <span id="connectionStatus" class="status offline"><i></i>Nicht verbunden</span>
+        <span class="version">v{{ app_version }}</span>
+      </div>
+    </header>
+
+    <aside class="sidebar glass">
+      <div class="sidebar-main">
+        <div class="side-brand">
+          <img class="side-brand-logo" src="{{ url_for('static', filename='cko_logo.png') }}" alt="CKOEPPEN – Code. Host. Deploy.">
+          <strong>Modbus Inspector</strong>
+        </div>
+        <nav id="navTabs">
+          <button class="nav-item active" data-tab="products"><span>01</span>Gerät & Profil</button>
+          <button class="nav-item" data-tab="network"><span>02</span>Netzwerk-Scan</button>
+          <button class="nav-item" data-tab="connection"><span>03</span>Verbindung</button>
+          <button class="nav-item" data-tab="units"><span>04</span>Unit-/Slave-IDs</button>
+          <button class="nav-item" data-tab="finder"><span>05</span>Register-Finder</button>
+          <button class="nav-item" data-tab="decoder"><span>06</span>Decoder</button>
+          <button class="nav-item" data-tab="monitor"><span>07</span>Live-Monitor <b id="pointCount">0</b></button>
+        </nav>
+      </div>
+      <div class="sidebar-bottom">
+        <div class="sidebar-note">
+          <strong>Lokale Profilbibliothek</strong>
+          <p>Gerätewissen bleibt auf diesem PC gespeichert und kann als Sicherung exportiert werden.</p>
+        </div>
+        <a class="sidebar-feedback" href="https://feedback.toolbox.ckoeppen.ch/?tool=CKO%20Modbus%20Inspector&amp;version={{ app_version }}&amp;page=CKO%20Modbus%20Inspector%20{{ app_version }}%20(Windows)" target="_blank" rel="noopener" title="Fehler melden oder Verbesserung vorschlagen – öffnet das Feedback-Formular der CKO Toolbox"><span>✉</span><strong>Fehler oder Idee melden</strong></a>
+        <button id="shutdownBtn" class="sidebar-shutdown" title="Monitor und lokalen Server beenden"><span>⏻</span><strong>Tool beenden</strong></button>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <section class="tab-page active" id="tab-products">
+        <div class="page-heading"><div><span class="eyebrow">SCHRITT 01</span><h2>Gerät auswählen</h2><p>Bekanntes Produktprofil verwenden oder ein neues Modbus-Gerät untersuchen.</p></div></div>
+        <article class="card glass product-search-card">
+          <div class="card-head"><div><span class="icon">⌕</span><h3>Welches Gerät möchtest du aufschalten?</h3></div><span id="profileLibraryCount" class="chip">0 Profile</span></div>
+          <div class="product-search-row">
+            <label>Hersteller, Produkt, Modell oder Projekt suchen<input id="productSearch" type="search" placeholder="z. B. Eastron SDM630, Siemens PAC2200, Produktionszähler …" autocomplete="off"></label>
+            <button id="newProductBtn" class="primary align-end">Neues Gerät anlegen</button>
+          </div>
+          <div id="productSearchStatus" class="hint">Profilbibliothek wird geladen …</div>
+          <div id="productResults" class="product-results"></div>
+          <div class="library-backup-actions">
+            <span>Die lokale Bibliothek bleibt bei Programmupdates erhalten.</span>
+            <div class="button-row"><button id="databaseImportBtn" class="secondary">Datenbank importieren</button><button id="databaseExportBtn" class="secondary">Datenbank sichern</button><input id="databaseImportFile" type="file" accept=".hbmodbusdb,.json" hidden></div>
+          </div>
+        </article>
+        <article id="newProductCard" class="card glass hidden">
+          <div class="card-head"><div><span class="icon">＋</span><h3>Neues Geräteprofil beginnen</h3></div></div>
+          <div class="form-grid product-create-grid">
+            <label>Produkt-/Profilname<input id="newProductName" placeholder="z. B. Produktionszähler PVA"></label>
+            <label>Hersteller<input id="newProductManufacturer" placeholder="falls bekannt"></label>
+            <label>Modell<input id="newProductModel" placeholder="Typ / Version"></label>
+            <label>Projekt/Anlage<input id="newProductProject" placeholder="z. B. MFH Musterstrasse"></label>
+            <label>Firmware<input id="newProductFirmware" placeholder="optional"></label>
+          </div>
+          <div class="dialog-actions"><button id="cancelNewProductBtn" class="secondary">Abbrechen</button><button id="beginNewProductBtn" class="primary">Mit Netzwerkscan beginnen →</button></div>
+        </article>
+        <article class="card glass">
+          <div class="card-head"><div><span class="icon">📖</span><h3>Geräte-Nachschlagewerk (lokal)</h3></div><span id="catalogCount" class="chip">0 Einträge</span></div>
+          <p class="hint">Lokal gespeicherte, von dir oder Claude im Chat recherchierte Registerkarten bekannter Geräte – rein lokal, kein Internetzugriff, kein API-Key nötig. Einträge sind Herstellerangaben, keine Messwerte.</p>
+          <div class="product-search-row">
+            <label>Hersteller oder Modell im Nachschlagewerk suchen<input id="catalogSearch" type="search" placeholder="z. B. Fronius, Symo, Eastron …" autocomplete="off"></label>
+            <label>Gerätetyp<select id="catalogTypeFilter"><option value="">Alle Gerätetypen</option></select></label>
+            <label>Status<select id="catalogStatusFilter"><option value="">Alle</option><option value="incomplete">Zu recherchieren</option><option value="complete">Dokumentiert</option></select></label>
+            <div class="button-row align-end"><button id="catalogImportBtn" class="secondary">Katalog-Datei importieren</button><input id="catalogImportFile" type="file" accept=".json,.hbdevicecatalog" hidden></div>
+          </div>
+          <div id="catalogStatus" class="hint"></div>
+          <div id="catalogResults" class="ai-lookup-results"></div>
+        </article>
+        <article class="card glass ai-lookup-card">
+          <div class="card-head"><div><span class="icon">✦</span><h3>Online-Anhaltspunkte per KI (Beta)</h3></div><span id="aiLookupProviderBadge" class="chip">Anbieter: Anthropic</span></div>
+          <p class="hint">Nutzt den in ⚙ KI gewählten Anbieter (Anthropic oder Google Gemini) mit Websuche und verlässt damit als einzige Funktion dieses Tools das lokale Netz. Ergebnisse sind unverifizierte KI-Vermutungen aus öffentlicher Dokumentation, keine Messwerte. Vor Verwendung im Register-Finder prüfen.</p>
+          <div class="ai-lookup-row">
+            <button id="aiLookupDeviceBtn" class="secondary">Wichtigste Datenpunkte online suchen</button>
+            <label>Bestimmte Grösse<input id="aiLookupQuantityInput" placeholder="z. B. Leistung, Netzfrequenz …"></label>
+            <button id="aiLookupQuantityBtn" class="secondary">Diese Grösse online suchen</button>
+          </div>
+          <div id="aiLookupStatus" class="hint"></div>
+          <div id="aiLookupWarnings" class="alert warning hidden"></div>
+          <div id="aiLookupResults" class="ai-lookup-results"></div>
+        </article>
+        <article class="card glass compact info-card">
+          <span class="info-symbol">i</span>
+          <div><strong>Produktwissen und Projektanschluss getrennt</strong><p>Register, Datentypen und Faktoren können wiederverwendet werden. IP-Adresse, Port und Unit-/Slave-ID werden für das aktuelle Projekt geprüft und angepasst.</p></div>
+        </article>
+        <article class="card glass modbus-info-card">
+          <div class="card-head"><div><span class="icon">⚙</span><h3>Was ist Modbus? Worauf muss ich achten?</h3></div></div>
+          <div class="modbus-info-content">
+            <div class="info-section">
+              <h4>Modbus in kurz</h4>
+              <p>Modbus ist ein einfaches, offenes Protokoll für die Kommunikation zwischen Industriegeräten über Netzwerk (TCP) oder Serielle Leitungen (RTU/ASCII). Es überträgt Sensormesswerte und Steuersignale in <strong>Registern</strong> – nummerierte Speicherstellen mit festgelegter Adresse und Datentyp.</p>
+            </div>
+            <div class="info-section">
+              <h4>Wichtige Konzepte</h4>
+              <ul>
+                <li><strong>Holding Register (FC03):</strong> Lesbare und schreibbare Werte – meist Konfiguration oder aktuelle Messwerte</li>
+                <li><strong>Input Register (FC04):</strong> Nur lesbar – aktuelle Messwerte und Status</li>
+                <li><strong>Unit-ID / Slave-ID:</strong> Adresse eines Geräts hinter einem Gateway (0–247; native TCP-Geräte ignorieren oft diese ID)</li>
+                <li><strong>Register-Adresse:</strong> Nullbasiert übertragen – Dokumentation mit „40001" kann intern Adresse 0 oder 1 meinen</li>
+                <li><strong>Datentypen:</strong> Uint16 (16 Bit), Int16, Float32 (2 Register), Int32, Float64 (4 Register)</li>
+              </ul>
+            </div>
+            <div class="info-section">
+              <h4>Praktische Fallstricke</h4>
+              <ul>
+                <li><strong>TCP-Port offen ≠ Modbus:</strong> Ein antwortender TCP-Port 502 bedeutet nicht automatisch, dass das Gerät korrekt auf Modbus-Anfragen reagiert – immer mit FC03/FC04 verifizieren</li>
+                <li><strong>Mehrere Master koordinieren sich nicht:</strong> Transparente Seriell-Server (RTU über TCP) können nicht mehrere Modbus-Clients gleichzeitig bedienen. Nur in Wartungsfenstern testen</li>
+                <li><strong>Byte-Reihenfolge (Endianness):</strong> Verschiedene Hersteller speichern 32-Bit-Werte in unterschiedlicher Reihenfolge (ABCD, BADC, CDAB, DCBA) – der Decoder zeigt alle Kombinationen</li>
+                <li><strong>Skalierungsfaktor:</strong> Rohregister werden oft mit einem Faktor oder Offset multipliziert – z. B. 2345 × 0,01 = 23,45 A</li>
+                <li><strong>Timeout bei Seriel-Gateways:</strong> Bei transparenten Seriell-Servern (9600 Baud) deutlich höhere Timeouts nötig (800–2000 ms)</li>
+              </ul>
+            </div>
+            <div class="info-section">
+              <h4>Workflow mit dem Inspector</h4>
+              <p><strong>1.</strong> Gerät im Netzwerk finden (Network-Scan) → <strong>2.</strong> TCP-Verbindung prüfen → <strong>3.</strong> Unit-IDs scannen → <strong>4.</strong> Register durchsuchen (Register-Finder) → <strong>5.</strong> Mit Decoder verifizieren (Skalierungsfaktor, Byte-Reihenfolge) → <strong>6.</strong> Im Live-Monitor überwachen und speichern</p>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="tab-page" id="tab-connection">
+        <div class="page-heading">
+          <div><span class="eyebrow">SCHRITT 03</span><h2>Modbus-Ziel verbinden</h2><p>Das gefundene Gerät übernehmen und den TCP-Zugang prüfen.</p></div>
+        </div>
+        <div class="grid">
+          <article class="card glass">
+            <div class="card-head"><div><span class="icon">↔</span><h3 id="transportTitle">Modbus TCP</h3></div><span class="chip">Port 502</span></div>
+            <div class="form-grid">
+              <label class="span-2">Übertragungsart<select id="transport"><option value="tcp">Modbus TCP – echtes TCP-Gerät / Protokoll-Gateway</option><option value="rtu_tcp">Modbus RTU über TCP – transparenter Seriell-Server</option></select></label>
+              <label class="span-2">IP-Adresse oder Hostname<input id="host" value="192.168.1.100" spellcheck="false"></label>
+              <label>Port<input id="port" type="number" value="502" min="1" max="65535"></label>
+              <label>Timeout (ms)<input id="timeout" type="number" value="800" min="50" max="10000"></label>
+            </div>
+            <button id="connectBtn" class="primary wide"><span>Verbindung prüfen</span><i>→</i></button>
+            <div id="connectResult" class="result-box muted">Noch keine Verbindung geprüft.</div>
+            <div id="transportWarning" class="alert warning hidden">Ein transparenter Seriell-Server koordiniert mehrere Modbus-Master nicht. Nur in einem sicheren Wartungsfenster testen, wenn die reguläre Abfrage pausiert ist.</div>
+            <button id="toUnitsBtn" class="secondary wide hidden"><span>Weiter zu den Unit-IDs (Slave-IDs)</span><i>→</i></button>
+          </article>
+        </div>
+        <article class="card glass compact info-card">
+          <span class="info-symbol">i</span>
+          <div><strong>Sicherer Start</strong><p>Diese MVP-Version verwendet ausschliesslich FC01–FC04. Es werden keine Coils oder Register geschrieben.</p></div>
+        </article>
+      </section>
+
+      <section class="tab-page" id="tab-network">
+        <div class="page-heading"><div><span class="eyebrow">SCHRITT 02</span><h2>Netzwerk-Scan</h2><p>Findet Geräte mit geöffnetem Modbus-TCP-Port im lokalen Netz oder über eine VPN-Route.</p></div></div>
+        <article class="card glass">
+          <div class="form-grid scan-grid">
+            <label>IP-Bereich (CIDR)<input id="cidr" value="192.168.1.0/24" spellcheck="false"></label>
+            <label>Port<input id="scanPort" type="number" value="502"></label>
+            <label>Timeout (ms)<input id="scanTimeout" type="number" value="250"></label>
+            <button id="networkScanBtn" class="primary align-end"><span>Netz scannen</span><i>⌕</i></button>
+          </div>
+          <div class="finder-actions">
+            <label class="check-label"><input id="scanVerifyModbus" type="checkbox">Modbus-Antwort verifizieren</label>
+            <label class="check-label"><input id="scanResolveNames" type="checkbox">Hostnamen auflösen</label>
+          </div>
+          <p class="hint">Verifizieren sortiert offene Ports ohne echte Modbus-Antwort aus, kostet pro Treffer aber eine zusätzliche Anfrage. MAC/Hersteller stammen aus dem ARP-Cache des Systems und sind nur im lokalen Segment verfügbar, nicht über VPN.</p>
+          <div id="networkSummary" class="inline-summary hidden"></div>
+          <div class="table-wrap">
+            <table><thead><tr><th>IP-Adresse</th><th>Port</th><th>Antwortzeit</th><th>Status</th><th>Hostname</th><th>MAC / Hersteller</th><th></th></tr></thead><tbody id="networkResults"><tr class="empty"><td colspan="7">Noch kein Scan ausgeführt.</td></tr></tbody></table>
+          </div>
+        </article>
+        <article class="card glass">
+          <div class="card-head"><div><span class="icon">⌁</span><h3>Erkannte Netzwerkadapter</h3></div></div>
+          <p class="hint">Lokale Bereiche lassen sich direkt übernehmen. Ein entferntes VPN-Netz kann jederzeit manuell als CIDR eingetragen werden.</p>
+          <div id="interfaces" class="interface-list"><div class="skeleton"></div><div class="skeleton short"></div></div>
+        </article>
+      </section>
+
+      <section class="tab-page" id="tab-units">
+        <div class="page-heading"><div><span class="eyebrow">SCHRITT 04</span><h2>Unit-IDs (Slave-IDs) finden</h2><p>Prüft, welche Teilnehmer hinter dem verbundenen Ziel antworten.</p></div></div>
+        <article class="card glass">
+          <div class="form-grid unit-grid">
+            <label>Start-ID<input id="unitStart" type="number" value="1" min="0" max="247"></label>
+            <label>End-ID<input id="unitEnd" type="number" value="20" min="0" max="247"></label>
+            <label>Test-Funktion<select id="unitFunction"><option value="3">FC03 Holding</option><option value="4">FC04 Input</option><option value="1">FC01 Coils</option><option value="2">FC02 Discrete</option></select></label>
+            <label>Testadresse<input id="unitAddress" type="number" value="0" min="0" max="65535"></label>
+            <button id="unitScanBtn" class="primary align-end"><span>Unit-/Slave-IDs scannen</span><i>⌕</i></button>
+          </div>
+          <div id="unitSummary" class="inline-summary hidden"></div>
+          <div id="unitWarning" class="alert warning hidden"></div>
+          <div class="table-wrap"><table><thead><tr><th>Unit-ID (Slave-ID)</th><th>Ergebnis</th><th>Antwortzeit</th><th></th></tr></thead><tbody id="unitResults"><tr class="empty"><td colspan="4">Noch kein Unit-/Slave-Scan ausgeführt.</td></tr></tbody></table></div>
+        </article>
+        <article class="card glass compact info-card">
+          <span class="info-symbol">i</span>
+          <div><strong>TCP erreichbar ist noch keine Modbus-Antwort</strong><p>Bei „Keine Antwort“ sind häufig ein bereits belegter Gateway-Client, eine falsche Testadresse oder ein über VPN zu knappes Timeout die Ursache.</p></div>
+        </article>
+      </section>
+
+      <section class="tab-page" id="tab-finder">
+        <div class="page-heading"><div><span class="eyebrow">SCHRITT 05</span><h2>Register finden</h2><p>Durchsucht einen begrenzten Bereich und vergleicht zwei Momentaufnahmen.</p></div></div>
+        <article class="card glass">
+          <div class="form-grid finder-grid">
+            <label>Unit-ID (Slave-ID)<input id="finderUnit" type="number" value="1" min="0" max="247"></label>
+            <label>Funktion<select id="finderFunction"><option value="0">FC03 + FC04</option><option value="3">FC03 Holding</option><option value="4">FC04 Input</option></select></label>
+            <label>Startadresse<input id="finderStart" type="number" value="0" min="0" max="65535"></label>
+            <label>Endadresse<input id="finderEnd" type="number" value="99" min="0" max="65535"></label>
+            <label>Pause (ms)<input id="finderDelay" type="number" value="50" min="0" max="2000"><small class="field-note">50 ms empfohlen · 100 ms bei aktivem Fremd-Master</small></label>
+            <button id="registerScanBtn" class="primary align-end"><span>Bereich scannen</span><i>⌕</i></button>
+          </div>
+          <div id="finderProgress" class="scan-progress hidden" aria-live="polite">
+            <div class="progress-head">
+              <div><strong id="finderProgressTitle">Registerscan läuft</strong><span id="finderProgressText">Scan wird vorbereitet …</span></div>
+              <button id="cancelRegisterScanBtn" class="secondary">Abbrechen</button>
+            </div>
+            <div class="progress-track"><div id="finderProgressBar" class="progress-fill"></div></div>
+            <div class="progress-meta"><span id="finderProgressPercent">0 %</span><span id="finderProgressQueries">0 Abfragen</span><span id="finderProgressHits">0 Antworten</span><span id="finderProgressTime">0 s</span></div>
+          </div>
+          <div class="finder-actions">
+            <label class="check-label"><input id="finderHideZero" type="checkbox">Nullwerte ausblenden</label>
+            <label class="check-label"><input id="finderHideFFFF" type="checkbox" checked>FFFF-Platzhalter ausblenden</label>
+            <label class="check-label"><input id="finderChangedOnly" type="checkbox" disabled>Nur Änderungen</label>
+            <div class="button-row"><button id="saveSnapshotBtn" class="secondary" disabled>Als Referenz speichern</button><button id="clearSnapshotBtn" class="secondary" disabled>Referenz löschen</button></div>
+          </div>
+          <div id="finderSummary" class="inline-summary hidden"></div>
+          <div id="finderWarning" class="alert warning hidden"></div>
+          <div class="table-wrap"><table><thead><tr><th>FC</th><th>Adresse</th><th>Hex</th><th>Dezimal</th><th>Vorher</th><th>Änderung</th><th></th></tr></thead><tbody id="finderResults"><tr class="empty"><td colspan="7">Noch kein Registerbereich gescannt.</td></tr></tbody></table></div>
+        </article>
+        <article class="card glass compact info-card">
+          <span class="info-symbol">i</span>
+          <div><strong>Ohne Registerliste zum Datenpunkt</strong><p>Zuerst einen überschaubaren Bereich scannen, als Referenz speichern, am Gerät gezielt eine Last oder einen Zustand ändern und erneut scannen. Bei Modbus-Ausnahme 2 testet der Finder automatisch gemeinsame Blöcke mit 2, 4, 6 und 8 Registern.</p></div>
+        </article>
+      </section>
+
+      <section class="tab-page" id="tab-decoder">
+        <div class="page-heading"><div><span class="eyebrow">SCHRITT 06</span><h2>Register entschlüsseln</h2><p>Ein Rohwert – alle üblichen Interpretationen gleichzeitig.</p></div></div>
+        <article class="card glass decoder-controls">
+          <div class="form-grid decoder-grid">
+            <label>Unit-ID (Slave-ID)<input id="decoderUnit" type="number" value="1" min="0" max="247"></label>
+            <label>Funktion<select id="decoderFunction"><option value="3">FC03 Holding</option><option value="4">FC04 Input</option><option value="1">FC01 Coils</option><option value="2">FC02 Discrete</option></select></label>
+            <label>Startadresse<input id="decoderAddress" type="number" value="0" min="0" max="65535"></label>
+            <label>Anzahl<input id="decoderCount" type="number" value="4" min="1" max="125"></label>
+            <button id="readBtn" class="primary align-end"><span>Register lesen</span><i>↓</i></button>
+          </div>
+          <div class="decoder-navigation">
+            <div class="button-row"><button id="decoderPrevBtn" class="secondary" disabled>← Vorheriges Register</button><button id="decoderNextBtn" class="secondary" disabled>Nächstes Register →</button></div>
+            <span>Nach dem Lesen ein Rohregister anklicken oder schrittweise springen.</span>
+          </div>
+        </article>
+        <article class="card glass target-search-card">
+          <div class="card-head"><div><span class="icon">≈</span><h3>Plausiblen Wert suchen</h3></div><span class="chip">ohne zusätzliche Busabfrage</span></div>
+          <p class="hint">Durchsucht den zuletzt gelesenen Bereich und bewertet nicht nur den Zahlenabstand, sondern auch Messgrösse, Datentyp, Registerbreite und Byte-/Word-Reihenfolge.</p>
+          <div class="form-grid target-grid">
+            <label>Gesuchte Grösse<select id="matchKind"><option value="free">Freie Suche</option><option value="energy">Energie / Zählerstand</option><option value="power">Leistung</option><option value="voltage">Spannung</option><option value="current">Strom</option><option value="frequency">Frequenz</option><option value="temperature">Temperatur</option><option value="percent">Prozent / Stellwert</option></select></label>
+            <label>Bezeichnung<input id="matchName" placeholder="z. B. Energie Bezug"></label>
+            <label>Aktueller Vergleichswert<input id="matchExpected" type="number" step="any" placeholder="z. B. −59,7"><small class="field-note important-note">Wert inklusive +/− wie am Gerät oder in der Visu eingeben, sofern bekannt.</small></label>
+            <label>Einheit<input id="matchUnit" placeholder="kWh, kW, V, …"></label>
+            <label>Toleranz (%)<input id="matchTolerance" type="number" step="0.1" min="0" max="1000" value="10"></label>
+            <label>Datentyp<select id="matchType"><option value="auto">Auto: 16/32 Bit</option><option value="16">Nur 16 Bit</option><option value="32">Nur 32 Bit</option><option value="64">Nur 64 Bit</option><option value="all">Alle Datentypen</option></select></label>
+            <label>Zusatzfaktor<input id="matchCustomFactor" type="number" step="any" placeholder="optional"><small class="field-note">z. B. 0,000025 laut Hersteller</small></label>
+            <button id="findMatchesBtn" class="primary align-end" disabled><span>Beste Treffer</span><i>⌕</i></button>
+          </div>
+          <div id="matchSummary" class="inline-summary hidden"></div>
+          <div id="matchWarning" class="alert warning hidden"></div>
+          <div id="matchRecommendation" class="match-recommendation hidden"></div>
+          <div id="matchTable" class="table-wrap hidden"><table><thead><tr><th>Rang</th><th>Adresse</th><th>Interpretation</th><th>Faktor</th><th>Ergebnis</th><th>Abweichung</th><th>Bewertung</th><th></th></tr></thead><tbody id="matchResults"></tbody></table></div>
+        </article>
+        <div id="decoderEmpty" class="empty-state glass"><div class="radar">⌁</div><h3>Bereit zum Lesen</h3><p>Wähle Unit-ID (Slave-ID), Funktion und Startadresse. Für 32-Bit-Werte werden zwei, für 64-Bit-Werte vier Register benötigt.</p></div>
+        <div id="decoderOutput" class="hidden">
+          <article class="card glass raw-card"><div><span class="eyebrow">ROHREGISTER</span><div id="rawValues" class="raw-values"></div></div><span id="readTimestamp" class="muted"></span></article>
+          <div id="decodeGroups" class="decode-groups"></div>
+        </div>
+      </section>
+
+      <section class="tab-page" id="tab-monitor">
+        <div class="page-heading monitor-heading">
+          <div><span class="eyebrow">SCHRITT 07</span><h2>Live-Monitor & Geräteprofil</h2><p>Geprüfte Datenpunkte sammeln, beobachten und in der Profilbibliothek sichern.</p></div>
+          <div class="button-row"><button id="importBtn" class="secondary">Profil-Datei importieren</button><button id="csvExportBtn" class="secondary">Visu-CSV exportieren</button><button id="exportBtn" class="secondary">.hbmodbus exportieren</button><input id="importFile" type="file" accept=".hbmodbus,.json" hidden></div>
+        </div>
+        <article class="card glass profile-card">
+          <div class="form-grid profile-grid">
+            <label>Produkt-/Profilname<input id="profileName" placeholder="z. B. Siemens PAC2200"></label>
+            <label>Hersteller<input id="profileManufacturer" placeholder="Hersteller"></label>
+            <label>Modell<input id="profileModel" placeholder="Typ / Version"></label>
+            <label>Projekt/Anlage<input id="profileProject" placeholder="Kunde, Objekt oder Anlage"></label>
+            <label>Firmware<input id="profileFirmware" placeholder="Firmware / Revision"></label>
+            <label>Notiz<input id="profileNotes" placeholder="Projektwissen, Gateway, Besonderheiten …"></label>
+          </div>
+          <div class="profile-save-row"><span id="databaseProfileState">Noch nicht in der Profilbibliothek gespeichert.</span><div class="button-row"><button id="saveAsProfileBtn" class="secondary hidden">Als neues Profil speichern</button><button id="saveProfileBtn" class="primary">In Profilbibliothek speichern</button></div></div>
+        </article>
+        <article class="card glass">
+          <div class="monitor-toolbar">
+            <div><strong id="monitorState">Monitor gestoppt</strong><span id="lastPoll">Noch keine Live-Abfrage</span></div>
+            <div class="button-row"><label class="inline-label">Intervall<select id="pollInterval"><option value="1000">1 s</option><option value="2000">2 s</option><option value="5000">5 s</option><option value="10000">10 s</option></select></label><button id="pollBtn" class="primary">Starten</button></div>
+          </div>
+          <div class="table-wrap monitor-table"><table><thead><tr><th>Datenpunkt</th><th>Adresse</th><th>Interpretation</th><th>Live-Wert</th><th>Verlauf</th><th></th></tr></thead><tbody id="monitorResults"><tr class="empty"><td colspan="6">Noch keine Datenpunkte. Im Decoder eine Interpretation mit „+ Monitor“ übernehmen.</td></tr></tbody></table></div>
+        </article>
+      </section>
+    </main>
+
+    <footer class="activity glass">
+      <div><span id="activityDot" class="activity-dot"></span><strong>Aktivität</strong><span id="activityText">Lokaler Connector bereit.</span></div>
+      <button id="clearLog" title="Aktivitätsanzeige zurücksetzen">×</button>
+    </footer>
+  </div>
+
+  <dialog id="pointDialog">
+    <form method="dialog" class="dialog-card glass">
+      <div class="dialog-head"><div><span class="eyebrow">MONITORPUNKT</span><h3>Datenpunkt übernehmen</h3></div><button id="closePointDialogBtn" value="cancel" class="icon-button" title="Abbrechen">×</button></div>
+      <div class="form-grid">
+        <label class="span-2">Bezeichnung<input id="pointName" required placeholder="z. B. Vorlauftemperatur"></label>
+        <label>Einheit<input id="pointUnit" placeholder="°C, W, %, …"></label>
+        <label>Faktor<input id="pointScale" type="number" step="0.1" list="scalePresets" value="1"><small class="field-note">Pfeiltasten: 0,1 · typische Faktoren frei auswählbar</small></label>
+        <datalist id="scalePresets">
+          <option value="1000"></option><option value="100"></option><option value="10"></option><option value="1"></option>
+          <option value="0.1"></option><option value="0.01"></option><option value="0.001"></option><option value="0.0001"></option>
+          <option value="0.00001"></option><option value="0.000001"></option>
+        </datalist>
+        <label>Offset<input id="pointOffset" type="number" step="any" value="0"></label>
+        <label>Vorschau<input id="pointPreview" disabled></label>
+      </div>
+      <div id="pointReadStrategy" class="point-read-strategy hidden"></div>
+      <div class="dialog-actions"><button id="cancelPointBtn" value="cancel" class="secondary">Abbrechen</button><button id="savePointBtn" value="default" class="primary">Übernehmen</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="aiSettingsDialog">
+    <form method="dialog" class="dialog-card glass">
+      <div class="dialog-head"><div><span class="eyebrow">KI-EINSTELLUNGEN</span><h3>Online-Datenpunkt-Suche</h3></div><button id="closeAiSettingsDialogBtn" value="cancel" class="icon-button" title="Abbrechen">×</button></div>
+      <div class="alert warning">Diese Funktion sendet Hersteller, Modell und Firmware an den gewählten KI-Anbieter im Internet und lässt eine Websuche durchführen. Alle anderen Funktionen dieses Tools bleiben rein lokal. Ergebnisse sind unverifizierte KI-Vermutungen, keine Messwerte.</div>
+      <div class="form-grid">
+        <label class="span-2">Aktiver Anbieter<select id="aiProviderSelect"><option value="anthropic">Anthropic (Claude)</option><option value="gemini">Google (Gemini)</option></select></label>
+        <label class="span-2">Anthropic-API-Schlüssel<input id="aiApiKeyInput" type="password" placeholder="sk-ant-…" autocomplete="off"></label>
+        <label class="span-2">Google-Gemini-API-Schlüssel<input id="geminiApiKeyInput" type="password" placeholder="AIza…" autocomplete="off"><small class="field-note">Kostenloses Kontingent über aistudio.google.com, ohne Domain-Organisationssperre.</small></label>
+      </div>
+      <div id="aiApiKeyStatus" class="hint">Anthropic: noch kein Schlüssel hinterlegt.</div>
+      <div id="geminiApiKeyStatus" class="hint">Gemini: noch kein Schlüssel hinterlegt.</div>
+      <div class="dialog-actions"><button id="removeAiApiKeyBtn" class="secondary">Anthropic-Schlüssel entfernen</button><button id="removeGeminiApiKeyBtn" class="secondary">Gemini-Schlüssel entfernen</button><button id="saveAiApiKeyBtn" value="default" class="primary">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+  <script>window.HB_APP_VERSION = {{ app_version|tojson }};</script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

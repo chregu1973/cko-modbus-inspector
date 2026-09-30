@@ -1,0 +1,23 @@
+{
+  "schema": "hbtec-device-catalog-entry",
+  "schema_version": 1,
+  "manufacturer": "Eastron",
+  "model": "SDM72D-M",
+  "device_type": "energiezaehler",
+  "aliases": "SDM72D, SDM72DModbus (Direktanschluss-Basisvariante bis 100A)",
+  "notes": "Alle Werte sind 32-Bit-IEEE754-Float ueber zwei Register (FC04, Eingaberegister), Wortreihenfolge Big-Endian = ABCD. Adressen hier sind bereits 0-basierte Protokolladressen (Modicon-Notation minus 30001), verifiziert anhand des Handbuch-Beispiels 'Amps 1 Start address = 0006' fuer Register 30007. Werte sind direkt nutzbar, scale=1. Diese Basisvariante (Direktanschluss bis 100A, kein CT) misst nur Gesamt-/Summenwerte (Wirkleistung, Energie, Import/Export, rueckstellbare Teilenergie) - keine Werte je Einzelphase, da nur Gesamtenergie/-leistung angezeigt wird. Maximal 30 Parameter pro Leseanfrage.",
+  "source_url": "https://docs.vekto.nl/media/eastron/eastron-sdm72dm-user-manual-v1.5.pdf",
+  "source_note": "Eastron SDM72D-M User Manual V1.5 (Firmware-Handbuch V1.3, 2017), PART 3 Modbus Protocol (Hersteller-PDF, Zhejiang Eastron Electronic Co., Ltd.)",
+  "verified": false,
+  "points": [
+    {"name": "Gesamt-Wirkleistung", "quantity_kind": "power", "function": 4, "address": 52, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkenergie Bezug (Total Import)", "quantity_kind": "energy", "function": 4, "address": 72, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Einspeisung (Total Export)", "quantity_kind": "energy", "function": 4, "address": 74, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Gesamt-Wirkenergie (Import+Export)", "quantity_kind": "energy", "function": 4, "address": 342, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Rueckstellbare Gesamtenergie", "quantity_kind": "energy", "function": 4, "address": 384, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "mittel"},
+    {"name": "Rueckstellbare Importenergie", "quantity_kind": "energy", "function": 4, "address": 388, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "mittel"},
+    {"name": "Rueckstellbare Exportenergie", "quantity_kind": "energy", "function": 4, "address": 390, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "mittel"},
+    {"name": "Gesamt-Importleistung", "quantity_kind": "power", "function": 4, "address": 1280, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Exportleistung", "quantity_kind": "power", "function": 4, "address": 1282, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"}
+  ]
+}
