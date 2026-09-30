@@ -238,6 +238,22 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 - Windows-Verknüpfung mit CKO-Icon wird beim ersten Start automatisch erzeugt
 - technische Profil- und Katalogformate bleiben vollständig kompatibel
 
+## Änderungen in 0.2.0
+
+- Windows-Setup statt ZIP mit Einzeldateien: nur `CKO-Modbus-Inspector-Setup.exe`, Startmenü- und Desktop-Verknüpfung, keine Python-Installation nötig
+- Start ohne Konsolenfenster; ein zweiter Start öffnet nur den Browser
+- mitgelieferte Geräteeinträge werden beim Start automatisch ins Nachschlagewerk übernommen
+- Button «Fehler oder Idee melden» (Feedback der CKO Toolbox)
+
+## Änderungen in 0.2.1
+
+- Arbeitsablauf sichtbar: Überblick «So gehst du vor», erledigte Schritte mit Häkchen in der Seitenleiste und «Weiter zu Schritt …» am Ende jeder Seite; optionale Schritte sind gekennzeichnet
+- Decoder: lehnt das Gerät einen Block ab (Ausnahme 2/3), wird automatisch der grösste lesbare Teil ab der Startadresse gelesen und die Anzahl angepasst – auch beim Anklicken eines Rohregisters
+- Modbus-Ausnahmen mit Klartext und Tipp (z. B. «Ausnahme 2 – unzulässige Datenadresse»), inkl. Hinweis, wenn eine Nachbaradresse lesbar ist; auch im Live-Monitor
+- Netzwerk-Scan erkennt transparente RS485-Gateways (Modbus RTU über TCP); «Verwenden» stellt die Übertragungsart passend ein
+- Unit-ID-Scan: verständlicherer Hinweis, wenn ein Gerät die Unit-ID nicht auswertet (z. B. Askoheat)
+- Nachschlagewerk: Askoheat-Eintrag mit Praxishinweis zur Unit-ID
+
 ## Open Source
 
 Dieses Projekt steht unter GPL-3.0 (siehe `LICENSE`). Es nutzt unter anderem

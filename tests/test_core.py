@@ -1,13 +1,16 @@
 import unittest
 from unittest.mock import patch
 
+import modbus_core
 from modbus_core import (
     InspectorError,
     ModbusException,
     decode_registers,
+    exception_text,
     decode_selected,
     match_register_values,
     poll_points,
+    read_values,
     scan_registers,
     scan_network,
     scan_unit_ids,
@@ -395,3 +398,74 @@ class RegisterScanTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReadFallbackTests(unittest.TestCase):
+    class Registers:
+        def __init__(self, registers):
+            self.registers = registers
+
+        def isError(self):
+            return False
+
+    class Illegal:
+        exception_code = 2
+
+        def isError(self):
+            return True
+
+    class ValidRangeClient:
+        """Gerät kennt nur die Register 30841–30846 (wie im Praxisfall)."""
+
+        def __init__(self):
+            self.calls = []
+
+        def connect(self):
+            return True
+
+        def close(self):
+            pass
+
+        def read_holding_registers(self, address, *, count=1, device_id=1):
+            self.calls.append((address, count))
+            if 30841 <= address and address + count - 1 <= 30846:
+                return ReadFallbackTests.Registers(list(range(address, address + count)))
+            return ReadFallbackTests.Illegal()
+
+    def _read(self, address, count):
+        return read_values({"connection": {"host": "127.0.0.1", "port": 502, "timeout_ms": 100},
+                            "unit_id": 10, "function": 3, "address": address, "count": count})
+
+    def test_reads_largest_accepted_part_of_a_rejected_block(self):
+        with patch("modbus_core._client", return_value=self.ValidRangeClient()):
+            result = self._read(30843, 6)
+        self.assertEqual(result["count"], 4)
+        self.assertEqual(result["requested_count"], 6)
+        self.assertEqual(result["values"], [30843, 30844, 30845, 30846])
+        self.assertIn("30843–30846", result["notice"])
+
+    def test_full_block_has_no_notice(self):
+        with patch("modbus_core._client", return_value=self.ValidRangeClient()):
+            result = self._read(30841, 6)
+        self.assertEqual(result["count"], 6)
+        self.assertIsNone(result["notice"])
+
+    def test_unreadable_start_explains_code_and_suggests_neighbour(self):
+        with patch("modbus_core._client", return_value=self.ValidRangeClient()):
+            with self.assertRaises(InspectorError) as raised:
+                self._read(30840, 6)
+        message = str(raised.exception)
+        self.assertIn("Ausnahme 2 – unzulässige Datenadresse", message)
+        self.assertIn("Adresse 30841 ist lesbar", message)
+
+    def test_exception_text_covers_gateway_codes(self):
+        self.assertIn("Zielgerät antwortet nicht", exception_text(11))
+        self.assertIn("Code x", exception_text("x"))
+
+
+class ProbeFramingTests(unittest.TestCase):
+    def test_rtu_over_tcp_is_detected_when_tcp_framing_fails(self):
+        with patch("modbus_core._probe_modbus_framing", side_effect=lambda host, port, timeout, rtu: rtu):
+            self.assertEqual(modbus_core._probe_modbus("10.0.0.5", 502, 0.2), "rtu_tcp")
+        with patch("modbus_core._probe_modbus_framing", return_value=False):
+            self.assertIs(modbus_core._probe_modbus("10.0.0.5", 502, 0.2), False)

@@ -7,7 +7,7 @@
       "manufacturer": "Askoma",
       "model": "ASKOHEAT+ AHFR-BI-plus-5.8",
       "device_type": "hlk",
-      "notes": "Elektrischer Durchlauferhitzer / Heizelement mit Modbus TCP/RTU. Unterstützt Temperaturregelung, Leistungssteuerung und Energiemanagementsystem-Integration.",
+      "notes": "Elektrischer Durchlauferhitzer / Heizelement mit Modbus TCP/RTU. Unterstützt Temperaturregelung, Leistungssteuerung und Energiemanagementsystem-Integration. Praxis (Modbus TCP, 30.09.2026): Das Gerät wertet die Unit-ID nicht aus und antwortet auf jede ID – der Unit-ID-Scan meldet deshalb viele Treffer. Eine beliebige ID verwenden, üblich ist 1.",
       "source_url": "https://www.download.askoma.com/askofamily_plus/modbus/askoheat-modbus.html",
       "source_note": "ASKOHEAT+ Modbus Documentation",
       "verified": 0,

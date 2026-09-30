@@ -144,6 +144,29 @@ ORDERS = {
 }
 
 
+# Modbus-Ausnahmecodes mit Bedeutung und praktischem Tipp
+EXCEPTION_HINTS = {
+    1: ("unzulässige Funktion", "Das Gerät unterstützt diesen Funktionscode nicht. FC03 (Holding) und FC04 (Input) tauschen."),
+    2: ("unzulässige Datenadresse", "Das Gerät kennt mindestens eine Adresse im Bereich nicht. Startadresse und Anzahl laut Registerliste prüfen; "
+        "bei 32-Bit-Werten genau auf der ersten Adresse des Werts beginnen. Zählt die Registerliste ab 1 (z. B. 40001), die Adresse um 1 verringern."),
+    3: ("unzulässiger Datenwert", "Die Anzahl ist für dieses Gerät zu gross oder passt nicht zum Datentyp. Weniger Register auf einmal lesen."),
+    4: ("Gerätefehler", "Das Gerät konnte die Anfrage intern nicht ausführen. Später erneut versuchen oder den Gerätezustand prüfen."),
+    5: ("Bestätigung – Verarbeitung läuft", "Das Gerät bearbeitet die Anfrage noch. Kurz warten und erneut lesen."),
+    6: ("Gerät beschäftigt", "Das Gerät ist ausgelastet, z. B. durch einen anderen Master. Abfrageintervall erhöhen und erneut versuchen."),
+    10: ("Gateway: Pfad nicht verfügbar", "Das Gateway kann das Ziel nicht erreichen. Gateway-Konfiguration und Unit-/Slave-ID prüfen."),
+    11: ("Gateway: Zielgerät antwortet nicht", "Hinter dem Gateway antwortet unter dieser Unit-/Slave-ID niemand. ID, Verkabelung und Baudrate prüfen."),
+}
+
+
+def exception_text(code: Any) -> str:
+    try:
+        number = int(code)
+    except (TypeError, ValueError):
+        return f"Modbus-Ausnahme vom Gerät (Code {code})."
+    meaning, hint = EXCEPTION_HINTS.get(number, ("unbekannte Ausnahme", "Registerliste des Herstellers prüfen."))
+    return f"Modbus-Ausnahme {number} – {meaning}. {hint}"
+
+
 @dataclass(frozen=True)
 class Target:
     host: str
@@ -838,17 +861,13 @@ def _probe_port(host: str, port: int, timeout: float) -> dict[str, Any] | None:
         return None
 
 
-def _probe_modbus(host: str, port: int, timeout: float) -> bool:
-    """Best-effort check that an open TCP port actually speaks Modbus.
-
-    A plain port scan cannot tell a Modbus gateway from any other service
-    bound to the same port. A real Modbus exception response still proves the
-    protocol, so only a connection failure or a garbled reply counts as "not
-    Modbus".
-    """
-    if ModbusTcpClient is None:
-        return False
-    client = ModbusTcpClient(host, port=port, timeout=timeout)
+def _probe_modbus_framing(host: str, port: int, timeout: float, rtu: bool) -> bool:
+    options: dict[str, Any] = {"port": port, "timeout": timeout}
+    if rtu:
+        if FramerType is None:
+            return False
+        options["framer"] = FramerType.RTU
+    client = ModbusTcpClient(host, **options)
     try:
         if not client.connect():
             return False
@@ -859,6 +878,24 @@ def _probe_modbus(host: str, port: int, timeout: float) -> bool:
         return False
     finally:
         client.close()
+
+
+def _probe_modbus(host: str, port: int, timeout: float) -> str | bool:
+    """Best-effort check that an open TCP port actually speaks Modbus.
+
+    A plain port scan cannot tell a Modbus gateway from any other service
+    bound to the same port. A real Modbus exception response still proves the
+    protocol, so only a connection failure or a garbled reply counts as "not
+    Modbus". Without a Modbus-TCP reply, RTU framing over TCP is tried as well
+    (transparent RS485 gateways). Returns "tcp", "rtu_tcp" or False.
+    """
+    if ModbusTcpClient is None:
+        return False
+    if _probe_modbus_framing(host, port, timeout, rtu=False):
+        return "tcp"
+    if _probe_modbus_framing(host, port, timeout, rtu=True):
+        return "rtu_tcp"
+    return False
 
 
 def _resolve_hostname(host: str) -> str | None:
@@ -948,7 +985,7 @@ def scan_network(payload: dict[str, Any]) -> dict[str, Any]:
             for item in results:
                 if verify_modbus:
                     future = executor.submit(_probe_modbus, item["host"], port, modbus_timeout)
-                    jobs[future] = (item, "modbus_verified")
+                    jobs[future] = (item, "modbus_probe")
                 if resolve_names:
                     future = executor.submit(_resolve_hostname, item["host"])
                     jobs[future] = (item, "hostname")
@@ -958,6 +995,12 @@ def scan_network(payload: dict[str, Any]) -> dict[str, Any]:
                     item[key] = future.result()
                 except Exception:
                     pass
+
+    for item in results:
+        probe = item.pop("modbus_probe", None)
+        if verify_modbus:
+            item["modbus_verified"] = bool(probe)
+            item["modbus_transport"] = probe or None
 
     if results:
         arp_table = _read_arp_table()
@@ -991,13 +1034,60 @@ def _read_payload(payload: dict[str, Any]) -> tuple[Target, int, int, int, int]:
     return target, unit_id, function, address, count
 
 
+def _readable(response: Any) -> bool:
+    return response is not None and not response.isError()
+
+
+def _largest_readable_count(client, function: int, address: int, count: int, unit_id: int) -> tuple[int, Any]:
+    """Grösste Anzahl ab der Startadresse, die das Gerät als Block annimmt (höchstens ~8 Anfragen)."""
+    low, high, best = 1, count - 1, (0, None)
+    while low <= high:
+        middle = (low + high) // 2
+        try:
+            response = _call_read(client, function, address, middle, unit_id)
+        except (OSError, ModbusException):
+            response = None
+        if _readable(response):
+            best, low = (middle, response), middle + 1
+        else:
+            high = middle - 1
+    return best
+
+
+def _neighbour_hint(client, function: int, address: int, unit_id: int) -> str:
+    """Prüft, ob eine Nachbaradresse lesbar ist – typisch bei Registerlisten, die ab 1 zählen."""
+    for candidate in (address - 1, address + 1):
+        if not 0 <= candidate <= 65535:
+            continue
+        try:
+            if _readable(_call_read(client, function, candidate, 1, unit_id)):
+                return f" Adresse {candidate} ist lesbar – dort beginnen."
+        except (OSError, ModbusException):
+            continue
+    return ""
+
+
 def read_values(payload: dict[str, Any]) -> dict[str, Any]:
     target, unit_id, function, address, count = _read_payload(payload)
+    requested = count
+    notice = None
     client = _client(target)
     try:
         if not client.connect():
             raise InspectorError("Keine TCP-Verbindung zum Zielgerät.", 502)
         response = _call_read(client, function, address, count, unit_id)
+        code = getattr(response, "exception_code", None) if response is not None and response.isError() else None
+        if code is not None and int(code) in (2, 3):
+            if count > 1:
+                readable, partial = _largest_readable_count(client, function, address, count, unit_id)
+                if readable:
+                    response, count = partial, readable
+                    notice = (
+                        f"Das Gerät lehnt {requested} Register ab {address} als Block ab (Ausnahme {code}). "
+                        f"Gelesen wurden die lesbaren {readable} Register {address}–{address + readable - 1}."
+                    )
+            if not _readable(response):
+                raise InspectorError(exception_text(code) + _neighbour_hint(client, function, address, unit_id), 502)
     except InspectorError:
         raise
     except (OSError, ModbusException) as error:
@@ -1007,8 +1097,7 @@ def read_values(payload: dict[str, Any]) -> dict[str, Any]:
     if response is None:
         raise InspectorError("Das Gerät hat nicht geantwortet.", 504)
     if response.isError():
-        code = getattr(response, "exception_code", "unbekannt")
-        raise InspectorError(f"Modbus-Ausnahme vom Gerät (Code {code}).", 502)
+        raise InspectorError(exception_text(getattr(response, "exception_code", "unbekannt")), 502)
 
     if function in (1, 2):
         values = [bool(value) for value in response.bits[:count]]
@@ -1024,6 +1113,8 @@ def read_values(payload: dict[str, Any]) -> dict[str, Any]:
         "transport": target.transport,
         "address": address,
         "count": count,
+        "requested_count": requested,
+        "notice": notice,
         "values": values,
         "decoding": decoding,
         "timestamp": time.time(),
@@ -1083,7 +1174,8 @@ def scan_unit_ids(payload: dict[str, Any]) -> dict[str, Any]:
             client.close()
     warning = None
     if len(found) >= 8 and len(set(fingerprints)) == 1:
-        warning = "Viele Unit-IDs (Slave-IDs) liefern dieselbe Antwort. Das Gateway könnte die Unit-ID ignorieren."
+        warning = ("Viele Unit-IDs (Slave-IDs) liefern dieselbe Antwort. Das Gerät oder Gateway wertet die Unit-ID vermutlich nicht aus – "
+                   "dann ist jede ID gültig, üblich sind 1 oder 255. Für Modbus-TCP-Geräte die ID aus der Herstellerangabe verwenden.")
     elif not found:
         warning = (
             "Der TCP-Port ist erreichbar, aber es kam keine gültige Modbus-Antwort. "
@@ -1300,8 +1392,10 @@ def poll_points(payload: dict[str, Any]) -> dict[str, Any]:
                     read_cache[cache_key] = _call_read(client, function, read_start, read_count, unit_id)
                 response = read_cache[cache_key]
                 if response is None or response.isError():
-                    code = getattr(response, "exception_code", "keine Antwort") if response else "keine Antwort"
-                    results.append({"id": point_id, "ok": False, "error": str(code)})
+                    code = getattr(response, "exception_code", None) if response else None
+                    meaning = EXCEPTION_HINTS.get(int(code), ("unbekannt", ""))[0] if isinstance(code, int) else ""
+                    error = f"Ausnahme {code} – {meaning}" if code is not None else "keine Antwort"
+                    results.append({"id": point_id, "ok": False, "error": error})
                     continue
                 block_raw = response.bits[:read_count] if function in (1, 2) else response.registers[:read_count]
                 if len(block_raw) < read_count:

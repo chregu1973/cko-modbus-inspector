@@ -335,15 +335,18 @@ $('#networkScanBtn').addEventListener('click', async () => {
       const row = document.createElement('tr');
       let statusClass = 'good';
       let statusText = 'TCP erreichbar';
-      if (device.modbus_verified === true) { statusText = 'Modbus bestätigt'; }
-      else if (device.modbus_verified === false) { statusClass = 'bad'; statusText = 'Port offen, kein Modbus'; }
+      let statusTitle = '';
+      if (device.modbus_verified === true && device.modbus_transport === 'rtu_tcp') { statusText = 'Modbus RTU über TCP bestätigt'; statusTitle = 'Transparentes RS485-Gateway: «Verwenden» stellt die Übertragungsart auf RTU über TCP.'; }
+      else if (device.modbus_verified === true) { statusText = 'Modbus TCP bestätigt'; }
+      else if (device.modbus_verified === false) { statusClass = 'bad'; statusText = 'Port offen, keine Modbus-Antwort'; statusTitle = 'Weder Modbus TCP noch RTU über TCP hat auf Unit-ID 1 geantwortet. Unter «Verbindung» manuell prüfen und im Schritt Unit-/Slave-IDs andere IDs testen.'; }
       const hostname = device.hostname ? escapeHtml(device.hostname) : '<span class="muted">–</span>';
       const macVendor = device.mac
         ? `${escapeHtml(device.mac)}${device.vendor ? ` <span class="muted">(${escapeHtml(device.vendor)})</span>` : ''}`
         : '<span class="muted">–</span>';
-      row.innerHTML = `<td>${escapeHtml(device.host)}</td><td>${device.port}</td><td>${device.latency_ms} ms</td><td class="${statusClass}">${statusText}</td><td>${hostname}</td><td>${macVendor}</td><td><button class="table-action">Verwenden</button></td>`;
+      row.innerHTML = `<td>${escapeHtml(device.host)}</td><td>${device.port}</td><td>${device.latency_ms} ms</td><td class="${statusClass}" title="${escapeHtml(statusTitle)}">${statusText}</td><td>${hostname}</td><td>${macVendor}</td><td><button class="table-action">Verwenden</button></td>`;
       row.querySelector('button').addEventListener('click', () => {
         els.host.value = device.host; els.port.value = device.port; $('#scanPort').value = device.port;
+        if (device.modbus_transport) { els.transport.value = device.modbus_transport; updateTransportHint(); }
         selectTab('connection'); $('#connectBtn').click();
       });
       tbody.appendChild(row);
@@ -631,6 +634,12 @@ async function readDecoder() {
       address: Number($('#decoderAddress').value), count: Number($('#decoderCount').value),
     };
     const data = await api('/api/read', request, button);
+    if (data.notice) {
+      // Gerät hat nur einen Teil des Blocks angenommen: Anzahl übernehmen, damit Monitor und Suche denselben Block lesen
+      request.count = data.count;
+      $('#decoderCount').value = data.count;
+      toast(`${data.notice} Die Anzahl wurde auf ${data.count} gesetzt.`);
+    }
     state.lastRead = { request, data };
     renderDecoding(data);
     $('#findMatchesBtn').disabled = Boolean(data.decoding.bits);

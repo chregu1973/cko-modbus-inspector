@@ -259,7 +259,7 @@
           </div>
           <div class="decoder-navigation">
             <div class="button-row"><button id="decoderPrevBtn" class="secondary" disabled>← Vorheriges Register</button><button id="decoderNextBtn" class="secondary" disabled>Nächstes Register →</button></div>
-            <span>Nach dem Lesen ein Rohregister anklicken oder schrittweise springen.</span>
+            <span>Rohregister anklicken, um ab dieser Adresse neu zu lesen. Lehnt das Gerät den Bereich ab, liest der Inspector automatisch den lesbaren Teil.</span>
           </div>
         </article>
         <article class="card glass target-search-card">
@@ -357,5 +357,6 @@
   <div id="toast" class="toast"></div>
   <script>window.HB_APP_VERSION = {{ app_version|tojson }};</script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script src="{{ url_for('static', filename='workflow.js') }}"></script>
 </body>
 </html>
