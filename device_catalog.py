@@ -130,6 +130,10 @@ class DeviceCatalogStore:
             database.execute("CREATE INDEX IF NOT EXISTS idx_catalog_model ON catalog_entries(manufacturer, model)")
             database.execute("CREATE INDEX IF NOT EXISTS idx_catalog_updated ON catalog_entries(updated_at DESC)")
             database.execute("CREATE INDEX IF NOT EXISTS idx_catalog_type ON catalog_entries(device_type)")
+            # Mitgelieferte Einträge, die schon einmal übernommen wurden (auch wenn sie später gelöscht wurden)
+            database.execute(
+                "CREATE TABLE IF NOT EXISTS catalog_seeded (seed_key TEXT PRIMARY KEY, seeded_at TEXT NOT NULL)"
+            )
 
     def _normalize_payload(self, payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         if not isinstance(payload, dict) or payload.get("schema") != ENTRY_SCHEMA or payload.get("schema_version") != SCHEMA_VERSION:
@@ -276,6 +280,46 @@ class DeviceCatalogStore:
         with closing(self._connect()) as database, database:
             cursor = database.execute("DELETE FROM catalog_entries WHERE id = ?", (_clean_text(entry_id, 80),))
         return cursor.rowcount > 0
+
+    def seed_from_directory(self, directory: str | Path) -> int:
+        """Mitgelieferte Katalogdateien übernehmen: nur fehlende Einträge, jeden nur einmal.
+
+        Bestehende oder vom Benutzer geänderte Einträge bleiben unverändert; ein gelöschter
+        mitgelieferter Eintrag kommt beim nächsten Start nicht zurück.
+        """
+        folder = Path(directory)
+        if not folder.is_dir():
+            return 0
+        added = 0
+        for file in sorted(folder.glob("*.hbdevicecatalog.json")):
+            try:
+                data = json.loads(file.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if not isinstance(data, dict):
+                continue
+            entries = [data] if data.get("schema") == ENTRY_SCHEMA else data.get("entries") or []
+            for entry in entries if isinstance(entries, list) else []:
+                if not isinstance(entry, dict):
+                    continue
+                manufacturer = _clean_text(entry.get("manufacturer"), 160)
+                model = _clean_text(entry.get("model"), 160)
+                key = f"{manufacturer.lower()}|{model.lower()}"
+                with closing(self._connect()) as database, database:
+                    seeded = database.execute("SELECT 1 FROM catalog_seeded WHERE seed_key = ?", (key,)).fetchone()
+                if seeded:
+                    continue
+                if self._find_existing_id(manufacturer, model) is None:
+                    try:
+                        self.save(entry)
+                    except ValueError:
+                        continue
+                    added += 1
+                with closing(self._connect()) as database, database:
+                    database.execute(
+                        "INSERT OR IGNORE INTO catalog_seeded (seed_key, seeded_at) VALUES (?, ?)", (key, _utc_now())
+                    )
+        return added
 
     def _find_existing_id(self, manufacturer: str, model: str) -> str | None:
         with closing(self._connect()) as database, database:

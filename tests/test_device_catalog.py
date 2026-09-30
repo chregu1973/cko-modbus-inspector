@@ -172,3 +172,35 @@ class DeviceCatalogApiTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BundledCatalogSeedTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.store = DeviceCatalogStore(Path(self.temporary_directory.name) / "seed.sqlite3")
+        self.bundled = Path(__file__).resolve().parent.parent / "device-catalog-entries"
+
+    def tearDown(self):
+        self.temporary_directory.cleanup()
+
+    def test_bundled_entries_are_added_once(self):
+        added = self.store.seed_from_directory(self.bundled)
+        self.assertGreaterEqual(added, 10)
+        self.assertEqual(self.store.seed_from_directory(self.bundled), 0)
+        self.assertTrue(self.store.list(query="Eastron"))
+
+    def test_deleted_bundled_entry_does_not_come_back(self):
+        self.store.seed_from_directory(self.bundled)
+        entry = self.store.list(query="Fronius")[0]
+        self.assertTrue(self.store.delete(entry["id"]))
+        self.store.seed_from_directory(self.bundled)
+        self.assertEqual(self.store.list(query="Fronius"), [])
+
+    def test_existing_user_entry_is_not_overwritten(self):
+        own = sample_entry()
+        own.update({"manufacturer": "Eastron", "model": "SDM630 / SDM630MCT", "notes": "eigene Notiz"})
+        self.store.import_payload(own)
+        self.store.seed_from_directory(self.bundled)
+        (entry,) = [item for item in self.store.list(query="SDM630") if item["model"] == "SDM630 / SDM630MCT"]
+        self.assertEqual(self.store.get(entry["id"])["metadata"]["notes"], "eigene Notiz")
+

@@ -6,6 +6,7 @@ import sqlite3
 import sys
 import time
 import webbrowser
+from pathlib import Path
 from threading import Timer
 
 from flask import Flask, jsonify, render_template, request
@@ -31,6 +32,8 @@ from profile_store import ProfileStore
 
 APP_VERSION = "0.2.0"
 DEFAULT_PORT = 48722
+# Mitgelieferte Geräteeinträge; im Windows-Setup liegen sie neben dem Programmcode
+BUNDLED_CATALOG_DIR = Path(__file__).resolve().parent / "device-catalog-entries"
 
 _profile_store = None
 _ai_settings_store = None
@@ -58,6 +61,10 @@ def device_catalog_store():
     global _device_catalog_store
     if _device_catalog_store is None:
         _device_catalog_store = DeviceCatalogStore()
+        try:
+            _device_catalog_store.seed_from_directory(BUNDLED_CATALOG_DIR)
+        except sqlite3.Error:
+            pass  # Nachschlagewerk bleibt nutzbar, die Startdateien lassen sich auch von Hand importieren
     return _device_catalog_store
 
 
