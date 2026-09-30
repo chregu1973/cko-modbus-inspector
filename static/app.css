@@ -705,3 +705,4 @@ dialog::backdrop { background: rgba(35, 51, 72, .38); backdrop-filter: blur(3px)
 .step-status { font-size: 11px; font-weight: 800; color: #8a96a8; }
 .step-status.ok { color: #18804b; }
 .step-footer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.step-optional { color: #8a96a8; font-weight: 700; }

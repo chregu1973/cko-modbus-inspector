@@ -1,8 +1,9 @@
 // Arbeitsablauf sichtbar machen: Überblick, erledigte Schritte in der Seitenleiste und «Weiter» am Seitenende.
 (() => {
   const STEPS = [
-    {tab: 'products', title: 'Gerät & Profil', what: 'Gerät aus der Bibliothek oder dem Nachschlagewerk wählen oder ein neues anlegen.',
-      next: 'Weiter mit dem Netzwerk-Scan. Ist die IP-Adresse schon bekannt, direkt zu Schritt 03 «Verbindung».'},
+    {tab: 'products', title: 'Gerät & Profil', optional: 'optional – es geht auch ohne Geräteauswahl',
+      what: 'Bekanntes Gerät aus der Bibliothek oder dem Nachschlagewerk wählen, um dessen Register gleich zu nutzen.',
+      next: 'Ohne Geräteauswahl einfach weiter: Netzwerk-Scan – oder direkt zu Schritt 03 «Verbindung», wenn die IP-Adresse bekannt ist.'},
     {tab: 'network', title: 'Netzwerk-Scan', optional: 'optional, wenn die IP-Adresse bekannt ist', what: 'Modbus-Geräte im Netz finden.',
       next: 'In der Trefferliste «Verwenden» klicken – das Gerät wird in Schritt 03 übernommen und verbunden.'},
     {tab: 'connection', title: 'Verbindung', what: 'IP-Adresse, Port und Übertragungsart (TCP oder RTU über TCP) prüfen.',
@@ -96,8 +97,21 @@
     });
   }
 
+  function markOptionalHeadings() {
+    STEPS.filter((step) => step.optional).forEach((step) => {
+      const eyebrow = document.querySelector(`#tab-${step.tab} .page-heading .eyebrow`);
+      if (eyebrow && !eyebrow.dataset.optional) {
+        eyebrow.dataset.optional = '1';
+        eyebrow.insertAdjacentHTML('beforeend', ' <span class="step-optional">· OPTIONAL</span>');
+      }
+      const nav = document.querySelector(`.nav-item[data-tab="${step.tab}"]`);
+      if (nav) nav.title = `Optional: ${step.optional.replace(/^optional[, –-]*\s*/, '')}`;
+    });
+  }
+
   renderOverview();
   renderFooters();
+  markOptionalHeadings();
   document.getElementById('newProductBtn')?.addEventListener('click', () => {
     if (document.getElementById('newProductName')?.value.trim()) markDone('products');
   });

@@ -29,7 +29,7 @@ Für Entwicklung und Linux: Python 3.10+ installieren, dann `start-windows.bat` 
 
 ## Typischer Ablauf
 
-1. Unter **Gerät & Profil** Hersteller, Produkt, Modell oder Projekt suchen.
+1. Optional: Unter **Gerät & Profil** Hersteller, Produkt, Modell oder Projekt suchen. Ohne Geräteauswahl direkt mit Schritt 3 oder 4 weitermachen.
 2. Ein vorhandenes Profil öffnen oder sein Gerätewissen für ein neues Projekt übernehmen. Falls das Gerät noch unbekannt ist, ein neues Profil mit Produktname, Hersteller und Modell beginnen.
 3. Unter **Netzwerk-Scan** Geräte mit geöffnetem Port 502 finden. VPN-Zielnetze können als CIDR manuell eingetragen werden.
 4. Den gewünschten Treffer übernehmen und unter **Verbindung** den TCP-Zugang prüfen.
@@ -253,6 +253,10 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 - Netzwerk-Scan erkennt transparente RS485-Gateways (Modbus RTU über TCP); «Verwenden» stellt die Übertragungsart passend ein
 - Unit-ID-Scan: verständlicherer Hinweis, wenn ein Gerät die Unit-ID nicht auswertet (z. B. Askoheat)
 - Nachschlagewerk: Askoheat-Eintrag mit Praxishinweis zur Unit-ID
+
+## Änderungen in 0.2.2
+
+- Schritt 01 «Gerät & Profil» ist als optional gekennzeichnet – es geht auch ohne Geräteauswahl; optionale Schritte tragen «OPTIONAL» in der Überschrift
 
 ## Open Source
 
