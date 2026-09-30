@@ -32,6 +32,7 @@ jobs:
         shell: pwsh
         run: |
           $env:HBMODBUS_PORT = "48799"
+          $env:HBMODBUS_DATA_DIR = "$env:RUNNER_TEMP\modbus-data"
           $process = Start-Process -FilePath "dist/CKO-Modbus-Inspector/CKO-Modbus-Inspector.exe" -PassThru
           $ok = $false
           for ($i = 0; $i -lt 30 -and -not $ok; $i++) {
@@ -39,8 +40,11 @@ jobs:
             try { $ok = (Invoke-RestMethod "http://127.0.0.1:48799/api/health").ok } catch {}
           }
           $page = Invoke-WebRequest "http://127.0.0.1:48799/" -UseBasicParsing
+          $catalog = Invoke-RestMethod "http://127.0.0.1:48799/api/device-catalog"
           Stop-Process -Id $process.Id -Force
           if (-not $ok -or $page.StatusCode -ne 200) { throw "Die gebaute Anwendung startet nicht." }
+          if ($catalog.counts.total -lt 10) { throw "Mitgelieferte Geräteeinträge fehlen: $($catalog.counts.total)" }
+          Write-Host "Nachschlagewerk: $($catalog.counts.total) Einträge"
       - name: Build Windows installer
         shell: pwsh
         run: |
