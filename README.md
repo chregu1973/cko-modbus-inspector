@@ -237,3 +237,9 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 - eindeutige Startdatei `CKO Modbus Inspector starten.bat` ergänzt
 - Windows-Verknüpfung mit CKO-Icon wird beim ersten Start automatisch erzeugt
 - technische Profil- und Katalogformate bleiben vollständig kompatibel
+
+## Open Source
+
+Dieses Projekt steht unter GPL-3.0 (siehe `LICENSE`). Es nutzt unter anderem
+[Flask](https://github.com/pallets/flask), [pymodbus](https://github.com/pymodbus-dev/pymodbus)
+und [psutil](https://github.com/giampaolo/psutil).
