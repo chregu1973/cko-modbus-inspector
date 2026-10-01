@@ -266,6 +266,7 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 ## Änderungen in 0.2.4
 
 - Schritt 03 «Verbindung»: doppelten Button «Weiter zu den Unit-IDs» entfernt – weiter geht es über «Weiter zu Schritt 04» am Seitenende
+- «optional» bei den Schritten 01, 02 und 05 fett und rot hervorgehoben
 
 ## Open Source
 
