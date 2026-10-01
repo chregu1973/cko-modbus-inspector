@@ -13,6 +13,10 @@
 :root[data-theme="dark"] .sidebar-note{background:#0f1a26}
 :root[data-theme="dark"] .sidebar-note strong{color:#d0d8e6}
 :root[data-theme="dark"] .sidebar-note p{color:#8f9aad}
+:root[data-theme="dark"] .sidebar-update{border:1px solid #399d69;background:#132f1f;color:#d1e9dd}
+:root[data-theme="dark"] .sidebar-update small{color:#94b0a1}
+:root[data-theme="dark"] .sidebar-update:hover{border-color:#b7dcc9}
+:root[data-theme="dark"] .sidebar-note .update-toggle, :root[data-theme="dark"] .update-toggle{color:#8e99ae}
 :root[data-theme="dark"] .sidebar-theme{background:transparent}
 :root[data-theme="dark"] .sidebar-feedback{border:1px solid #233c51;background:#0b1a2b;color:#cedbe7}
 :root[data-theme="dark"] .sidebar-feedback:hover{background:#0e2138;border-color:#1771c0}

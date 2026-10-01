@@ -433,6 +433,28 @@ body {
 }
 .sidebar-note strong { color: #334360; }
 .sidebar-note p { color: #75829a; font-size: 10px; line-height: 1.4; }
+.sidebar-update {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 9px;
+  align-items: center;
+  border-radius: 8px;
+  border: 1px solid #9fdcbc;
+  background: #e8f8ef;
+  color: #11703f;
+  font-size: 12px;
+  text-decoration: none;
+}
+.sidebar-update[hidden] { display: none; }
+.sidebar-update span { grid-row: span 2; font-size: 16px; }
+.sidebar-update small { color: #4f6b5c; font-size: 10px; }
+.sidebar-update:hover { border-color: #18804b; }
+.sidebar-note .update-toggle, .update-toggle { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 6px; margin-top: 8px; font-size: 10px; font-weight: 600; color: #65728c; text-align: left; cursor: pointer; }
+.update-toggle input { width: auto; min-height: 0; height: auto; margin: 0; padding: 0; flex: none; }
+
 .sidebar-theme {
   width: 100%;
   margin-top: 12px;

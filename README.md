@@ -268,6 +268,10 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 - Schritt 03 «Verbindung»: doppelten Button «Weiter zu den Unit-IDs» entfernt – weiter geht es über «Weiter zu Schritt 04» am Seitenende
 - «optional» bei den Schritten 01, 02 und 05 fett und rot hervorgehoben
 
+## Änderungen in 0.2.5
+
+- Update-Hinweis: Beim Start fragt der Inspector einmal die öffentliche Versionsliste der CKO Toolbox ab und zeigt bei einer neueren Version «⬆ Version x.y.z verfügbar» in der Seitenleiste. Es werden keine Profil-, Projekt- oder Anlagendaten übertragen; ohne Internet erscheint nichts. Abschaltbar über «Beim Start auf Updates prüfen».
+
 ## Open Source
 
 Dieses Projekt steht unter GPL-3.0 (siehe `LICENSE`). Es nutzt unter anderem

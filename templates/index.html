@@ -57,7 +57,9 @@
         <div class="sidebar-note">
           <strong>Lokale Profilbibliothek</strong>
           <p>Gerätewissen bleibt auf diesem PC gespeichert und kann als Sicherung exportiert werden.</p>
+          <label class="update-toggle" title="Fragt beim Start einmal die öffentliche Versionsliste der CKO Toolbox ab. Es werden keine Profil-, Projekt- oder Anlagendaten übertragen."><input id="updateCheckToggle" type="checkbox" checked> Beim Start auf Updates prüfen</label>
         </div>
+        <a id="updateBanner" class="sidebar-update" href="https://toolbox.ckoeppen.ch/tools/modbus-inspector/#download" target="_blank" rel="noopener" hidden><span>⬆</span><strong id="updateBannerText">Neue Version verfügbar</strong><small>Zur Download-Seite</small></a>
         <button id="themeToggle" class="sidebar-theme" type="button" aria-pressed="false"><span>☾</span><strong>Dunkles Design</strong></button>
         <a class="sidebar-feedback" href="https://feedback.toolbox.ckoeppen.ch/?tool=CKO%20Modbus%20Inspector&amp;version={{ app_version }}&amp;page=CKO%20Modbus%20Inspector%20{{ app_version }}%20(Windows)" target="_blank" rel="noopener" title="Fehler melden oder Verbesserung vorschlagen – öffnet das Feedback-Formular der CKO Toolbox"><span>✉</span><strong>Fehler oder Idee melden</strong></a>
         <button id="shutdownBtn" class="sidebar-shutdown" title="Monitor und lokalen Server beenden"><span>⏻</span><strong>Tool beenden</strong></button>

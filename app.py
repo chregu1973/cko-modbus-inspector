@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 import os
 import socket
 import sqlite3
 import sys
 import time
+import urllib.request
 import webbrowser
 from pathlib import Path
 from threading import Timer
@@ -30,7 +32,7 @@ from modbus_core import (
 from profile_store import ProfileStore
 
 
-APP_VERSION = "0.2.4"
+APP_VERSION = "0.2.5"
 DEFAULT_PORT = 48722
 # Mitgelieferte Geräteeinträge; im Windows-Setup liegen sie neben dem Programmcode
 BUNDLED_CATALOG_DIR = Path(__file__).resolve().parent / "device-catalog-entries"
@@ -94,6 +96,39 @@ def handle_server_error(error):
 @app.get("/")
 def index():
     return render_template("index.html", app_version=APP_VERSION)
+
+
+# Update-Prüfung: fragt nur die öffentliche Versionsliste der CKO Toolbox ab, keine Projekt- oder Anlagendaten
+TOOLS_JSON_URL = "https://toolbox.ckoeppen.ch/data/tools.json"
+DOWNLOAD_PAGE = "https://toolbox.ckoeppen.ch/tools/modbus-inspector/#download"
+TOOL_ID = "modbus-inspector"
+
+
+def _version_tuple(value: str) -> tuple[int, ...]:
+    parts = []
+    for part in str(value).split("."):
+        digits = "".join(ch for ch in part if ch.isdigit())
+        parts.append(int(digits) if digits else 0)
+    return tuple(parts)
+
+
+def _fetch_latest_version(timeout: float = 4.0) -> str | None:
+    request = urllib.request.Request(TOOLS_JSON_URL, headers={"User-Agent": f"CKO-Modbus-Inspector/{APP_VERSION}"})
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        tools = json.loads(response.read(512 * 1024).decode("utf-8"))
+    entry = next((tool for tool in tools if isinstance(tool, dict) and tool.get("id") == TOOL_ID), None)
+    return str(entry["version"]) if entry and entry.get("version") else None
+
+
+@app.get("/api/update-check")
+def update_check():
+    try:
+        latest = _fetch_latest_version()
+    except (OSError, ValueError, KeyError, TypeError):
+        return jsonify({"ok": True, "checked": False, "current": APP_VERSION, "latest": None, "update_available": False})
+    available = bool(latest) and _version_tuple(latest) > _version_tuple(APP_VERSION)
+    return jsonify({"ok": True, "checked": latest is not None, "current": APP_VERSION, "latest": latest,
+                    "update_available": available, "download_url": DOWNLOAD_PAGE})
 
 
 @app.get("/api/health")

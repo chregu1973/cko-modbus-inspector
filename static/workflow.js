@@ -126,6 +126,33 @@
   });
   applyTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
 
+  // Update-Prüfung beim Start (abschaltbar)
+  const UPDATE_STORE = 'cko-modbus-update-check';
+  const updateEnabled = () => { try { return localStorage.getItem(UPDATE_STORE) !== 'off'; } catch (_) { return true; } };
+  async function checkForUpdate() {
+    const banner = document.getElementById('updateBanner');
+    if (!banner) return;
+    banner.hidden = true;
+    if (!updateEnabled()) return;
+    try {
+      const result = await (await originalFetch('/api/update-check')).json();
+      if (result.update_available) {
+        document.getElementById('updateBannerText').textContent = `Version ${result.latest} verfügbar`;
+        banner.title = `Installiert: ${result.current} · Neu: ${result.latest} – Setup über die bestehende Installation ausführen, Profile bleiben erhalten.`;
+        banner.hidden = false;
+      }
+    } catch (_) { /* ohne Internet keine Meldung */ }
+  }
+  const updateToggle = document.getElementById('updateCheckToggle');
+  if (updateToggle) {
+    updateToggle.checked = updateEnabled();
+    updateToggle.addEventListener('change', () => {
+      try { localStorage.setItem(UPDATE_STORE, updateToggle.checked ? 'on' : 'off'); } catch (_) { /* gilt bis zum Schliessen */ }
+      checkForUpdate();
+    });
+  }
+  checkForUpdate();
+
   renderOverview();
   renderFooters();
   markOptionalHeadings();
