@@ -258,6 +258,11 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 
 - Schritt 01 «Gerät & Profil» ist als optional gekennzeichnet – es geht auch ohne Geräteauswahl; optionale Schritte tragen «OPTIONAL» in der Überschrift
 
+## Änderungen in 0.2.3
+
+- Helles und dunkles Design: Umschalter in der Seitenleiste («☾ Dunkles Design» / «☀ Helles Design»). Die Wahl bleibt im Browser gespeichert; ohne eigene Wahl folgt der Inspector der Windows-Einstellung.
+- Das dunkle Design wird mit `tools/gen_dark_theme.py` aus dem hellen erzeugt (`static/dark.css`), Handkorrekturen in `static/dark-overrides.css`; die CI prüft, dass `dark.css` aktuell ist.
+
 ## Open Source
 
 Dieses Projekt steht unter GPL-3.0 (siehe `LICENSE`). Es nutzt unter anderem

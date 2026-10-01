@@ -109,6 +109,23 @@
     });
   }
 
+  // Helles/dunkles Design umschalten; die Wahl bleibt im Browser gespeichert
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    const button = document.getElementById('themeToggle');
+    if (!button) return;
+    const dark = theme === 'dark';
+    button.innerHTML = dark ? '<span>☀</span><strong>Helles Design</strong>' : '<span>☾</span><strong>Dunkles Design</strong>';
+    button.setAttribute('aria-pressed', String(dark));
+    button.title = dark ? 'Zum hellen Design wechseln – besser lesbar bei Sonne oder Spiegelungen' : 'Zum dunklen Design wechseln';
+  }
+  document.getElementById('themeToggle')?.addEventListener('click', () => {
+    const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('cko-modbus-theme', theme); } catch (_) { /* gilt dann bis zum Schliessen */ }
+    applyTheme(theme);
+  });
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+
   renderOverview();
   renderFooters();
   markOptionalHeadings();

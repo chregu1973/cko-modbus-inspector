@@ -433,6 +433,25 @@ body {
 }
 .sidebar-note strong { color: #334360; }
 .sidebar-note p { color: #75829a; font-size: 10px; line-height: 1.4; }
+.sidebar-theme {
+  width: 100%;
+  margin-top: 12px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: .18s ease;
+}
+.sidebar-theme span { font-size: 15px; line-height: 1; }
+.sidebar-theme:hover { border-color: var(--line-strong); color: var(--text); }
+
 .sidebar-feedback {
   width: 100%;
   margin-top: 12px;

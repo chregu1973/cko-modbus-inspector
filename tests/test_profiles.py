@@ -113,3 +113,17 @@ class ProfileApiTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ThemeTests(unittest.TestCase):
+    def test_dark_theme_is_generated_and_linked(self):
+        import app as app_module
+
+        root = Path(__file__).resolve().parent.parent
+        dark = (root / "static" / "dark.css").read_text(encoding="utf-8")
+        self.assertIn(':root[data-theme="dark"]', dark)
+        self.assertIn("dark-overrides.css", dark)
+        page = app_module.app.test_client().get("/").get_data(as_text=True)
+        self.assertIn("dark.css", page)
+        self.assertIn('id="themeToggle"', page)
+        self.assertIn("cko-modbus-theme", page)

@@ -1,0 +1,5 @@
+/* Handkorrekturen für das dunkle Design (werden an dark.css angehängt) – Farben wie im CKO-Dunkeldesign */
+:root[data-theme="dark"]{color-scheme:dark;--bg:#07111b;--panel:#0c1824;--panel-strong:#0e1d2b;--line:#1d3346;--line-strong:#2c5a78;--text:#ecf8ff;--muted:#8da5b4;--cyan:#51dbff;--cyan-soft:rgba(81,219,255,.12);--blue:#5b9bff;--green:#50e3ad;--amber:#ffca6b;--red:#ff6f7e}
+:root[data-theme="dark"] body{background:radial-gradient(circle at 50% -20%,#10293c 0,#07111b 38%,var(--bg) 75%);color:var(--text)}
+/* Hintergrund hinter Dialogen: dunkel statt milchig */
+:root[data-theme="dark"] dialog::backdrop{background:rgba(2,8,14,.72)}
