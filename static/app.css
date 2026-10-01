@@ -358,7 +358,7 @@ body {
   grid-column: 1;
   grid-row: 1 / 4;
   height: 100vh;
-  min-height: 650px;
+  min-height: 0;
   position: sticky;
   top: 0;
   z-index: 20;
@@ -368,10 +368,14 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;            /* sehr niedrige Fenster: ganze Seitenleiste scrollt */
+  scrollbar-width: thin;
 }
 
-.sidebar-main { min-height: 0; }
+/* Navigation scrollt zwischen Logo und unterem Block, statt vom unteren Block verdeckt zu werden */
+.sidebar-main { flex: 1 1 auto; min-height: 210px; display: flex; flex-direction: column; overflow: hidden; }
+.sidebar-bottom { flex: none; }
 .side-brand {
   min-height: 162px;
   padding: 13px 20px 14px;
@@ -395,7 +399,7 @@ body {
   letter-spacing: -.01em;
 }
 
-.sidebar nav { padding: 9px 10px; overflow-y: auto; }
+.sidebar nav { flex: 1 1 auto; min-height: 0; padding: 9px 10px; overflow-y: auto; scrollbar-width: thin; }
 .nav-item {
   color: #4f5e78;
   padding: 11px 12px;
@@ -747,3 +751,12 @@ dialog::backdrop { background: rgba(35, 51, 72, .38); backdrop-filter: blur(3px)
 .step-status.ok { color: #18804b; }
 .step-footer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .step-optional { color: #d6243a; font-weight: 800; }
+
+/* Wenig Fensterhöhe: Kopf und Hinweis kompakter, damit die Schritte sichtbar bleiben */
+@media (max-height: 820px) {
+  .side-brand { min-height: 0; padding: 10px 20px; flex-direction: row; align-items: center; gap: 12px; }
+  .side-brand-logo { width: 64px; }
+  .side-brand strong { margin-top: 0; }
+  .sidebar-note p { display: none; }
+  .nav-item { padding-top: 8px; padding-bottom: 8px; }
+}

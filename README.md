@@ -272,6 +272,10 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 
 - Update-Hinweis: Beim Start fragt der Inspector einmal die öffentliche Versionsliste der CKO Toolbox ab und zeigt bei einer neueren Version «⬆ Version x.y.z verfügbar» in der Seitenleiste. Es werden keine Profil-, Projekt- oder Anlagendaten übertragen; ohne Internet erscheint nichts. Abschaltbar über «Beim Start auf Updates prüfen».
 
+## Änderungen in 0.2.6
+
+- Seitenleiste: die Schritte scrollen zwischen Logo und unterem Block, statt verdeckt zu werden; sehr niedrige Fenster scrollen die ganze Seitenleiste; bei wenig Höhe kompakteres Logo.
+
 ## Open Source
 
 Dieses Projekt steht unter GPL-3.0 (siehe `LICENSE`). Es nutzt unter anderem
