@@ -273,11 +273,8 @@ function markConnected(host, port, latency, transport) {
   els.status.className = 'status online';
   els.status.innerHTML = '<i></i>Verbunden';
   $('#connectResult').className = 'result-box success';
-  $('#connectResult').textContent = `${host}:${port} per TCP erreichbar · ${latency} ms · ${transportLabel(transport)}. Eine Modbus-Antwort wird im nächsten Schritt geprüft.`;
-  $('#toUnitsBtn').classList.remove('hidden');
+  $('#connectResult').textContent = `${host}:${port} per TCP erreichbar · ${latency} ms · ${transportLabel(transport)}. Eine Modbus-Antwort wird im nächsten Schritt geprüft – unten «Weiter zu Schritt 04».`;
 }
-
-$('#toUnitsBtn').addEventListener('click', () => selectTab('units'));
 
 $('#connectBtn').addEventListener('click', async () => {
   const button = $('#connectBtn');
@@ -290,7 +287,6 @@ $('#connectBtn').addEventListener('click', async () => {
     els.status.innerHTML = '<i></i>Nicht verbunden';
     $('#connectResult').className = 'result-box error';
     $('#connectResult').textContent = 'Ziel nicht erreichbar. IP, Port, Netzwerk und Firewall prüfen.';
-    $('#toUnitsBtn').classList.add('hidden');
   }
 });
 

@@ -263,6 +263,10 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 - Helles und dunkles Design: Umschalter in der Seitenleiste («☾ Dunkles Design» / «☀ Helles Design»). Die Wahl bleibt im Browser gespeichert; ohne eigene Wahl folgt der Inspector der Windows-Einstellung.
 - Das dunkle Design wird mit `tools/gen_dark_theme.py` aus dem hellen erzeugt (`static/dark.css`), Handkorrekturen in `static/dark-overrides.css`; die CI prüft, dass `dark.css` aktuell ist.
 
+## Änderungen in 0.2.4
+
+- Schritt 03 «Verbindung»: doppelten Button «Weiter zu den Unit-IDs» entfernt – weiter geht es über «Weiter zu Schritt 04» am Seitenende
+
 ## Open Source
 
 Dieses Projekt steht unter GPL-3.0 (siehe `LICENSE`). Es nutzt unter anderem
