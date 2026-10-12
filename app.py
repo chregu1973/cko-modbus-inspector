@@ -19,6 +19,7 @@ from device_catalog import DEVICE_TYPE_LABELS, DeviceCatalogStore
 from gemini_lookup import lookup_device_points as gemini_lookup_device_points
 from gemini_lookup import lookup_quantity as gemini_lookup_quantity
 from ha_export import build_yaml as build_ha_yaml
+from loxone_import import convert as convert_loxone
 from modbus_core import (
     InspectorError,
     connect_test,
@@ -32,13 +33,14 @@ from modbus_core import (
     scan_registers,
     scan_unit_ids,
     set_write_mode,
+    sunspec_scan,
     write_mode_status,
     write_value,
 )
 from profile_store import ProfileStore
 
 
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.4.0"
 DEFAULT_PORT = 48722
 # Mitgelieferte Geräteeinträge; im Windows-Setup liegen sie neben dem Programmcode
 BUNDLED_CATALOG_DIR = Path(__file__).resolve().parent / "device-catalog-entries"
@@ -212,6 +214,12 @@ def write_mode_set():
     if request.remote_addr not in ("127.0.0.1", "::1"):
         return jsonify({"ok": False, "error": "Schreiben kann nur lokal freigegeben werden."}), 403
     return jsonify(set_write_mode(bool(payload.get("enabled"))))
+
+
+@app.post("/api/sunspec-scan")
+def sunspec_scan_route():
+    payload = request.get_json(force=True, silent=False) or {}
+    return jsonify(sunspec_scan(payload))
 
 
 @app.post("/api/encode-preview")
@@ -440,6 +448,21 @@ def device_catalog_import():
     except (OSError, sqlite3.Error, ValueError) as error:
         raise InspectorError(str(error), 400)
     return jsonify({"ok": True, **result})
+
+
+@app.post("/api/device-catalog-import-loxone")
+def device_catalog_import_loxone():
+    body = request.get_json(force=True, silent=False) or {}
+    xml_text = str(body.get("xml") or "")
+    if len(xml_text) > 2_000_000:
+        raise InspectorError("Die Loxone-Vorlage ist grösser als 2 MB.", 400)
+    try:
+        entry = convert_loxone(xml_text, str(body.get("filename") or ""))
+        result = device_catalog_store().import_payload(entry)
+    except (OSError, sqlite3.Error, ValueError) as error:
+        raise InspectorError(str(error), 400)
+    return jsonify({"ok": True, **result, "manufacturer": entry["manufacturer"], "model": entry["model"],
+                    "points": len(entry["points"])})
 
 
 def terminate_process():

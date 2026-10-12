@@ -65,10 +65,11 @@
     if (!heading) return;
     const box = document.createElement('div');
     box.className = 'workflow-overview';
-    box.innerHTML = `<strong>So gehst du vor</strong><ol>${STEPS.map((step, index) => `
+    box.innerHTML = `<strong>So gehst du vor <button type="button" class="link-button" data-open-help>Bebilderte Anleitung öffnen →</button></strong><ol>${STEPS.map((step, index) => `
       <li><button type="button" data-overview-step="${step.tab}"><span>${String(index + 1).padStart(2, '0')}</span>
       <b>${step.title}</b><small>${step.what}${step.optional ? ` <em>(${step.optional})</em>` : ''}</small></button></li>`).join('')}</ol>`;
     box.addEventListener('click', (event) => {
+      if (event.target.closest('[data-open-help]')) { window.openHelp?.(0); return; }
       const button = event.target.closest('[data-overview-step]');
       if (button) goTo(button.dataset.overviewStep);
     });

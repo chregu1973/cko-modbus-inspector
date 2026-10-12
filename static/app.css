@@ -779,3 +779,36 @@ button.danger:disabled { opacity: .45; cursor: not-allowed; }
 .connection-status-card td.bad { color: #d6243a; font-weight: 700; }
 .connection-status-card .field-note { margin: 0 0 10px; }
 button.small { padding: 7px 12px; font-size: 12px; }
+
+/* SunSpec */
+.sunspec-device { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin: 12px 0; }
+.sunspec-device div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.sunspec-device small { display: block; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.sunspec-device strong { font-size: 13px; }
+.sunspec-model { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.sunspec-model summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+.sunspec-model summary button { margin-left: auto; }
+.sunspec-model .table-wrap { margin-top: 10px; }
+.muted-row td { opacity: .5; }
+
+/* Kurzanleitung */
+.sidebar-help span { font-weight: 800; width: 18px; height: 18px; display: inline-grid; place-items: center; border-radius: 50%; border: 1.5px solid currentColor; font-size: 11px; }
+.help-dialog { width: min(1180px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 0; background: transparent; }
+.help-dialog::backdrop { background: rgba(10, 20, 35, .55); backdrop-filter: blur(3px); }
+.help-card { padding: 22px 24px; }
+.help-body { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr); gap: 22px; align-items: start; margin-top: 8px; }
+.help-figure { margin: 0; }
+.help-figure img { display: block; width: 100%; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 28px rgba(16, 32, 56, .14); background: #fff; }
+.help-figure figcaption { margin-top: 6px; font-size: 11px; color: var(--muted); }
+.help-step { display: inline-block; margin-bottom: 8px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--cyan); }
+.help-text p, .help-text li { font-size: 13px; line-height: 1.6; }
+.help-text ul { padding-left: 18px; margin: 8px 0 14px; }
+.help-text code { font-size: 12px; }
+.help-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; }
+.help-dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.help-dots button { width: 10px; height: 10px; padding: 0; border-radius: 50%; border: 0; background: #c9d6e6; cursor: pointer; }
+.help-dots button.active { background: var(--cyan); transform: scale(1.25); }
+@media (max-width: 900px) { .help-body { grid-template-columns: 1fr; } }
+.link-button { margin-left: 10px; border: 0; background: none; color: var(--cyan); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 0; }
+.help-dialog .dialog-card.help-card { width: 100%; max-width: none; }
+.workflow-overview > strong .link-button { display: inline; width: auto; height: auto; padding: 0; border: 0; background: none; box-shadow: none; transform: none; color: var(--cyan); font-size: 12px; }

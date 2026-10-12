@@ -288,6 +288,18 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 - neue Datentypen Float16 und String (Text, z. B. Seriennummer oder Modellname)
 - einheitlicher Begriff «Unit-ID» (Slave-ID / Device-ID nur noch als Erklärung)
 
+## Änderungen in 0.4.0
+
+- SunSpec-Erkennung (Schritt 05): findet die Kennung «SunS», liest Hersteller, Modell, Seriennummer, alle Modelle und Werte samt Skalierungsfaktoren; Übernahme in den Live-Monitor oder ins Nachschlagewerk (mit Verweis auf das Skalierungsregister). Modelldefinitionen der SunSpec Alliance (Apache-2.0, `data/`).
+- Nachschlagewerk um 76 Geräte aus den offenen evcc-Vorlagen erweitert (Zähler, Wechselrichter, Speicher – u. a. SMA, Huawei, Sungrow, Kostal, Victron, VARTA, E3/DC, Eastron, Carlo Gavazzi, Siemens, SolarEdge; MIT-Lizenz, Quelle je Eintrag). Erzeugt mit `tools/import_evcc_meters.py`.
+- Import von Loxone-Modbus-Vorlagen (.xml): selbst heruntergeladene Vorlagen werden lokal ins Nachschlagewerk übernommen (Datentyp, Reihenfolge, Skalierung, Einheit). Die Vorlagen der Loxone Library haben keine offene Lizenz und werden deshalb nicht mitgeliefert.
+- Bebilderte Kurzanleitung «So geht's» (Seitenleiste, öffnet sich beim ersten Start einmal) mit zehn Schritten und Screenshots.
+
+## Datenquellen und Lizenzen
+
+- SunSpec-Modelle: SunSpec Alliance, Apache-2.0 – `data/SUNSPEC-LICENSE.txt`
+- evcc-Gerätevorlagen: © evcc.io, MIT – `device-catalog-entries/EVCC-LICENSE.txt`
+
 ## Open Source
 
 Dieses Projekt steht unter GPL-3.0 (siehe `LICENSE`). Es nutzt unter anderem

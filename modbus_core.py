@@ -1612,3 +1612,19 @@ def write_value(payload: dict[str, Any]) -> dict[str, Any]:
     WRITE_LOG.append(entry)
     del WRITE_LOG[:-200]
     return {"ok": True, **entry, "readback": readback_raw}
+
+
+# --- SunSpec-Erkennung -----------------------------------------------------------
+
+def sunspec_scan(payload: dict[str, Any]) -> dict[str, Any]:
+    import sunspec
+
+    target = _target(payload)
+    unit_id = _int(payload.get("unit_id", 1), "Unit-ID", 0, 247)
+    started = time.perf_counter()
+    with _shared(target, "SunSpec") as client:
+        try:
+            result = sunspec.scan(lambda address, count: _call_read(client, 3, address, count, unit_id))
+        except (OSError, ModbusException, ValueError) as error:
+            raise InspectorError(f"SunSpec-Abfrage fehlgeschlagen: {error}", 502)
+    return {"ok": True, "unit_id": unit_id, "duration_ms": round((time.perf_counter() - started) * 1000), **result}

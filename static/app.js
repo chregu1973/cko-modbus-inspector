@@ -1379,17 +1379,26 @@ $('#catalogStatusFilter').addEventListener('change', () => loadCatalog());
 
 $('#catalogImportBtn').addEventListener('click', () => $('#catalogImportFile').click());
 $('#catalogImportFile').addEventListener('change', async event => {
-  const file = event.target.files?.[0];
+  const files = [...(event.target.files || [])];
   event.target.value = '';
-  if (!file) return;
-  try {
-    const data = JSON.parse(await file.text());
-    const result = await profileLibraryRequest('/api/device-catalog-import', {method: 'POST', body: {data}});
-    toast(`${result.total} Katalogeintrag/-einträge importiert: ${result.created} neu, ${result.updated} aktualisiert.`);
-    loadCatalog();
-  } catch (error) {
-    toast(error.message || 'Katalog-Import fehlgeschlagen.', true);
+  if (!files.length) return;
+  let created = 0, updated = 0;
+  const errors = [];
+  for (const file of files) {
+    try {
+      const text = await file.text();
+      const result = file.name.toLowerCase().endsWith('.xml')
+        // Loxone-Vorlage: wird lokal umgewandelt und nur im eigenen Nachschlagewerk gespeichert
+        ? await profileLibraryRequest('/api/device-catalog-import-loxone', {method: 'POST', body: {xml: text, filename: file.name}})
+        : await profileLibraryRequest('/api/device-catalog-import', {method: 'POST', body: {data: JSON.parse(text)}});
+      created += result.created; updated += result.updated;
+    } catch (error) {
+      errors.push(`${file.name}: ${error.message || 'Import fehlgeschlagen'}`);
+    }
   }
+  if (created || updated) toast(`${created + updated} Katalogeintrag/-einträge importiert: ${created} neu, ${updated} aktualisiert.${errors.length ? ` ${errors.length} Datei(en) mit Fehler.` : ''}`);
+  if (errors.length) toast(errors.join(' · '), true);
+  loadCatalog();
 });
 
 $('#databaseExportBtn').addEventListener('click', async () => {

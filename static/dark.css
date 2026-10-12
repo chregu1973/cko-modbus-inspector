@@ -125,6 +125,10 @@
 :root[data-theme="dark"] .write-eyebrow{color:#ea808d !important}
 :root[data-theme="dark"] .connection-status-card td.good{color:#cde7da}
 :root[data-theme="dark"] .connection-status-card td.bad{color:#ea808d}
+:root[data-theme="dark"] .help-dialog{background:transparent}
+:root[data-theme="dark"] .help-dialog::backdrop{background:rgba(184, 200, 224, 0.495)}
+:root[data-theme="dark"] .help-figure img{box-shadow:0 8px 28px rgba(0, 0, 0, 0.54);background:#0b141b}
+:root[data-theme="dark"] .help-dots button{background:#273547}
 /* dark-overrides.css */
 /* Handkorrekturen für das dunkle Design (werden an dark.css angehängt) – Farben wie im CKO-Dunkeldesign */
 :root[data-theme="dark"]{color-scheme:dark;--bg:#07111b;--panel:#0c1824;--panel-strong:#0e1d2b;--line:#1d3346;--line-strong:#2c5a78;--text:#ecf8ff;--muted:#8da5b4;--cyan:#51dbff;--cyan-soft:rgba(81,219,255,.12);--blue:#5b9bff;--green:#50e3ad;--amber:#ffca6b;--red:#ff6f7e}

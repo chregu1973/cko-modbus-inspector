@@ -60,6 +60,7 @@
           <label class="update-toggle" title="Fragt beim Start einmal die öffentliche Versionsliste der CKO Toolbox ab. Es werden keine Profil-, Projekt- oder Anlagendaten übertragen."><input id="updateCheckToggle" type="checkbox" checked> Beim Start auf Updates prüfen</label>
         </div>
         <a id="updateBanner" class="sidebar-update" href="https://toolbox.ckoeppen.ch/tools/modbus-inspector/#download" target="_blank" rel="noopener" hidden><span>⬆</span><strong id="updateBannerText">Neue Version verfügbar</strong><small>Zur Download-Seite</small></a>
+        <button id="helpBtn" class="sidebar-theme sidebar-help" type="button" title="Bebilderte Kurzanleitung"><span>?</span><strong>So geht's</strong></button>
         <button id="themeToggle" class="sidebar-theme" type="button" aria-pressed="false"><span>☾</span><strong>Dunkles Design</strong></button>
         <a class="sidebar-feedback" href="https://feedback.toolbox.ckoeppen.ch/?tool=CKO%20Modbus%20Inspector&amp;version={{ app_version }}&amp;page=CKO%20Modbus%20Inspector%20{{ app_version }}%20(Windows)" target="_blank" rel="noopener" title="Fehler melden oder Verbesserung vorschlagen – öffnet das Feedback-Formular der CKO Toolbox"><span>✉</span><strong>Fehler oder Idee melden</strong></a>
         <button id="shutdownBtn" class="sidebar-shutdown" title="Monitor und lokalen Server beenden"><span>⏻</span><strong>Tool beenden</strong></button>
@@ -100,7 +101,7 @@
             <label>Hersteller oder Modell im Nachschlagewerk suchen<input id="catalogSearch" type="search" placeholder="z. B. Fronius, Symo, Eastron …" autocomplete="off"></label>
             <label>Gerätetyp<select id="catalogTypeFilter"><option value="">Alle Gerätetypen</option></select></label>
             <label>Status<select id="catalogStatusFilter"><option value="">Alle</option><option value="incomplete">Zu recherchieren</option><option value="complete">Dokumentiert</option></select></label>
-            <div class="button-row align-end"><button id="catalogImportBtn" class="secondary">Katalog-Datei importieren</button><input id="catalogImportFile" type="file" accept=".json,.hbdevicecatalog" hidden></div>
+            <div class="button-row align-end"><button id="catalogImportBtn" class="secondary" title="CKO-Katalogdatei (.json) oder selbst heruntergeladene Loxone-Modbus-Vorlage (.xml) – mehrere Dateien möglich">Katalog-Datei / Loxone-Vorlage importieren</button><input id="catalogImportFile" type="file" accept=".json,.hbdevicecatalog,.xml" multiple hidden></div>
           </div>
           <div id="catalogStatus" class="hint"></div>
           <div id="catalogResults" class="ai-lookup-results"></div>
@@ -237,6 +238,11 @@
 
       <section class="tab-page" id="tab-finder">
         <div class="page-heading"><div><span class="eyebrow">SCHRITT 05</span><h2>Register finden</h2><p>Durchsucht einen begrenzten Bereich und vergleicht zwei Momentaufnahmen.</p></div></div>
+        <article class="card glass sunspec-card">
+          <div class="card-head"><div><span class="icon">☀</span><h3>SunSpec-Erkennung</h3></div><button id="sunspecScanBtn" class="primary" type="button">SunSpec suchen</button></div>
+          <p class="field-note">Für Wechselrichter, Zähler und Speicher mit SunSpec (Fronius, SMA, SolarEdge, KACO, Kostal …): liest die Kennung «SunS», alle Modelle und die Skalierungsfaktoren direkt aus – ohne Registersuche. Verwendet die Unit-ID des Register-Finders unten. Modelldefinitionen: SunSpec Alliance (Apache-2.0).</p>
+          <div id="sunspecResult"></div>
+        </article>
         <article class="card glass">
           <div class="form-grid finder-grid">
             <label>Unit-ID<input id="finderUnit" type="number" value="1" min="0" max="247"></label>
@@ -363,6 +369,17 @@
     </form>
   </dialog>
 
+  <dialog id="helpDialog" class="help-dialog">
+    <div class="dialog-card glass help-card">
+      <div class="dialog-head"><div><span class="eyebrow">KURZANLEITUNG</span><h3 id="helpTitle">So geht's</h3></div><button id="helpCloseBtn" class="icon-button" type="button" title="Schliessen">×</button></div>
+      <div class="help-body">
+        <figure class="help-figure"><img id="helpImage" alt=""><figcaption id="helpCaption"></figcaption></figure>
+        <div class="help-text"><span id="helpStep" class="help-step"></span><div id="helpContent"></div>
+          <button id="helpTryBtn" class="secondary small" type="button">Hier ausprobieren →</button></div>
+      </div>
+      <div class="help-nav"><button id="helpPrevBtn" class="secondary" type="button">← Zurück</button><div id="helpDots" class="help-dots"></div><button id="helpNextBtn" class="primary" type="button">Weiter →</button></div>
+    </div>
+  </dialog>
   <dialog id="writeDialog">
     <form method="dialog" class="dialog-card glass" id="writeForm">
       <div class="dialog-head"><div><span class="eyebrow write-eyebrow">SCHREIBEN</span><h3>Wert schreiben</h3></div><button value="cancel" class="icon-button" title="Abbrechen">×</button></div>
@@ -402,5 +419,7 @@
   <script src="{{ url_for('static', filename='app.js') }}?v={{ app_version }}"></script>
   <script src="{{ url_for('static', filename='workflow.js') }}?v={{ app_version }}"></script>
   <script src="{{ url_for('static', filename='connection-write.js') }}?v={{ app_version }}"></script>
+  <script src="{{ url_for('static', filename='sunspec.js') }}?v={{ app_version }}"></script>
+  <script src="{{ url_for('static', filename='help.js') }}?v={{ app_version }}"></script>
 </body>
 </html>
