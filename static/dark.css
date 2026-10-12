@@ -118,6 +118,13 @@
 :root[data-theme="dark"] .step-status{color:#909bac}
 :root[data-theme="dark"] .step-status.ok{color:#cde7da}
 :root[data-theme="dark"] .step-optional{color:#ea808d}
+:root[data-theme="dark"] .badge.danger-badge{color:#ffffff;background:#dc3247;border:1px solid #b91e32;box-shadow:0 0 0 3px rgba(0, 0, 0, 0.57)}
+:root[data-theme="dark"] .write-button{border:1px solid #5b1c24;background:#270a0c;color:#e2979e}
+:root[data-theme="dark"] .write-button:hover{border-color:#b71f32}
+:root[data-theme="dark"] button.danger{color:#ffffff;background:#dc3247;border:1px solid #b91e32}
+:root[data-theme="dark"] .write-eyebrow{color:#ea808d !important}
+:root[data-theme="dark"] .connection-status-card td.good{color:#cde7da}
+:root[data-theme="dark"] .connection-status-card td.bad{color:#ea808d}
 /* dark-overrides.css */
 /* Handkorrekturen für das dunkle Design (werden an dark.css angehängt) – Farben wie im CKO-Dunkeldesign */
 :root[data-theme="dark"]{color-scheme:dark;--bg:#07111b;--panel:#0c1824;--panel-strong:#0e1d2b;--line:#1d3346;--line-strong:#2c5a78;--text:#ecf8ff;--muted:#8da5b4;--cyan:#51dbff;--cyan-soft:rgba(81,219,255,.12);--blue:#5b9bff;--green:#50e3ad;--amber:#ffca6b;--red:#ff6f7e}

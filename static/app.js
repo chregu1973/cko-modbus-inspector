@@ -26,7 +26,7 @@ const els = {
 };
 
 function connection() {
-  return { host: els.host.value.trim(), port: Number(els.port.value), timeout_ms: Number(els.timeout.value), transport: els.transport.value };
+  return { host: els.host.value.trim(), port: Number(els.port.value), timeout_ms: Number(els.timeout.value), transport: els.transport.value, wait_ms: Number($('#waitMs')?.value) || 0 };
 }
 
 function setActivity(text, type = 'ok') {
@@ -165,7 +165,7 @@ async function loadDatabaseProfile(profileId, asTemplate) {
       updateActiveProduct();
       saveLocal();
       selectTab('network');
-      toast('Gerätewissen geladen. Projekt, IP-Adresse und Unit-/Slave-ID jetzt prüfen.');
+      toast('Gerätewissen geladen. Projekt, IP-Adresse und Unit-ID jetzt prüfen.');
     } else {
       state.databaseProfileId = profileId;
       updateActiveProduct(data.metadata);
@@ -334,7 +334,7 @@ $('#networkScanBtn').addEventListener('click', async () => {
       let statusTitle = '';
       if (device.modbus_verified === true && device.modbus_transport === 'rtu_tcp') { statusText = 'Modbus RTU über TCP bestätigt'; statusTitle = 'Transparentes RS485-Gateway: «Verwenden» stellt die Übertragungsart auf RTU über TCP.'; }
       else if (device.modbus_verified === true) { statusText = 'Modbus TCP bestätigt'; }
-      else if (device.modbus_verified === false) { statusClass = 'bad'; statusText = 'Port offen, keine Modbus-Antwort'; statusTitle = 'Weder Modbus TCP noch RTU über TCP hat auf Unit-ID 1 geantwortet. Unter «Verbindung» manuell prüfen und im Schritt Unit-/Slave-IDs andere IDs testen.'; }
+      else if (device.modbus_verified === false) { statusClass = 'bad'; statusText = 'Port offen, keine Modbus-Antwort'; statusTitle = 'Weder Modbus TCP noch RTU über TCP hat auf Unit-ID 1 geantwortet. Unter «Verbindung» manuell prüfen und im Schritt Unit-IDs andere IDs testen.'; }
       const hostname = device.hostname ? escapeHtml(device.hostname) : '<span class="muted">–</span>';
       const macVendor = device.mac
         ? `${escapeHtml(device.mac)}${device.vendor ? ` <span class="muted">(${escapeHtml(device.vendor)})</span>` : ''}`
@@ -356,15 +356,16 @@ $('#unitScanBtn').addEventListener('click', async () => {
     const data = await api('/api/unit-scan', {
       connection: connection(), start_id: Number($('#unitStart').value), end_id: Number($('#unitEnd').value),
       function: Number($('#unitFunction').value), address: Number($('#unitAddress').value),
+      delay_ms: Number($('#unitDelay').value) || 0, reconnect_each: $('#unitReconnect').checked,
     }, button);
     const summary = $('#unitSummary');
     summary.classList.remove('hidden');
-    summary.innerHTML = `<span><strong>${data.scanned}</strong> Unit-/Slave-IDs geprüft</span><span><strong>${data.found.length}</strong> Modbus-Antworten</span><span><strong>${data.duration_ms} ms</strong> Laufzeit</span>`;
+    summary.innerHTML = `<span><strong>${data.scanned}</strong> Unit-IDs geprüft</span><span><strong>${data.found.length}</strong> Modbus-Antworten</span><span><strong>${data.duration_ms} ms</strong> Laufzeit</span>`;
     const warning = $('#unitWarning');
     warning.classList.toggle('hidden', !data.warning); warning.textContent = data.warning || '';
     const tbody = $('#unitResults');
     const attempts = data.attempts || data.found;
-    tbody.innerHTML = attempts.length ? '' : '<tr class="empty"><td colspan="4">Keine Unit-/Slave-ID geprüft.</td></tr>';
+    tbody.innerHTML = attempts.length ? '' : '<tr class="empty"><td colspan="4">Keine Unit-ID geprüft.</td></tr>';
     attempts.forEach(item => {
       const row = document.createElement('tr');
       const responded = ['answer', 'exception'].includes(item.status);
@@ -380,7 +381,7 @@ $('#unitScanBtn').addEventListener('click', async () => {
         });
       tbody.appendChild(row);
     });
-    setActivity(`${data.scanned} Unit-/Slave-IDs geprüft, ${data.found.length} Modbus-Antworten in ${data.duration_ms} ms.`);
+    setActivity(`${data.scanned} Unit-IDs geprüft, ${data.found.length} Modbus-Antworten in ${data.duration_ms} ms.`);
   } catch (_) {}
 });
 
@@ -444,7 +445,7 @@ async function runRegisterScan() {
   $('#registerScanBtn').disabled = true;
   $('#cancelRegisterScanBtn').disabled = false;
   $('#finderWarning').classList.add('hidden');
-  setActivity(`Registerscan Unit/Slave ${unitId} läuft …`, 'busy');
+  setActivity(`Registerscan Unit-ID ${unitId} läuft …`, 'busy');
   updateRegisterProgress({percent: 0, rangeText: `Bereich ${startAddress}–${endAddress} wird vorbereitet …`, checked: 0, totalQueries, hits: 0, elapsed: 0});
   state.registerProgressTimer = setInterval(() => {
     $('#finderProgressTime').textContent = `${((performance.now() - started) / 1000).toFixed(1)} s`;
@@ -455,7 +456,7 @@ async function runRegisterScan() {
     for (let chunkStart = startAddress; chunkStart <= endAddress; chunkStart += chunkSize) {
       const chunkEnd = Math.min(endAddress, chunkStart + chunkSize - 1);
       $('#finderProgressTitle').textContent = 'Registerscan läuft';
-      $('#finderProgressText').textContent = `Prüfe Adressen ${chunkStart}–${chunkEnd} · Unit/Slave ${unitId}`;
+      $('#finderProgressText').textContent = `Prüfe Adressen ${chunkStart}–${chunkEnd} · Unit-ID ${unitId}`;
       const part = await fetchRegisterChunk({
         connection: connection(), unit_id: unitId, function: selectedFunction,
         start_address: chunkStart, end_address: chunkEnd, capture_end_address: endAddress, delay_ms: delayMs,
@@ -481,7 +482,7 @@ async function runRegisterScan() {
       const elapsed = performance.now() - started;
       updateRegisterProgress({
         percent: (aggregate.checked / totalQueries) * 100,
-        rangeText: `Zuletzt geprüft: ${chunkStart}–${chunkEnd} · Unit/Slave ${unitId}`,
+        rangeText: `Zuletzt geprüft: ${chunkStart}–${chunkEnd} · Unit-ID ${unitId}`,
         checked: aggregate.checked, totalQueries, hits: aggregate.found.length, elapsed,
       });
       if (part.aborted) break;
@@ -812,7 +813,7 @@ function renderMatchRecommendation(item, defaults) {
       <div class="recommendation-badges">${ambiguityBadge}${polarityBadge}<span class="confidence confidence-${item.confidence_label}">${escapeHtml(item.confidence_label)} · ${formatNumber(item.confidence)} %</span></div>
     </div>
     <div class="recommendation-grid">
-      <div><small>Unit-ID (Slave-ID)</small><strong>${request.unit_id}</strong></div>
+      <div><small>Unit-ID</small><strong>${request.unit_id}</strong></div>
       <div><small>Funktion</small><strong>${functionLabel}</strong></div>
       <div><small>Register</small><strong>${item.address}</strong><span>${item.register_count} Register</span></div>
       <div><small>Datentyp</small><strong>${escapeHtml(item.visu_type)}</strong><span>${escapeHtml(item.order)}</span></div>
@@ -831,7 +832,7 @@ function renderMatchRecommendation(item, defaults) {
   container.querySelector('.recommendation-copy').addEventListener('click', async () => {
     const blockInfo = Number(request.count) > Number(item.register_count)
       ? `; Abfrageblock ${request.address}/${request.count}; Wert-Offset ${item.address - request.address}` : '';
-    const config = `${name}; Unit-ID (Slave-ID) ${request.unit_id}; ${functionLabel}; Register ${item.address}; ${item.visu_type}; ${item.order}; Faktor ${plainNumber(item.factor)}; ${unit || 'ohne Einheit'}${blockInfo}`;
+    const config = `${name}; Unit-ID ${request.unit_id}; ${functionLabel}; Register ${item.address}; ${item.visu_type}; ${item.order}; Faktor ${plainNumber(item.factor)}; ${unit || 'ohne Einheit'}${blockInfo}`;
     try {
       await copyText(config);
       toast('Visu-Konfiguration wurde kopiert.');
@@ -857,7 +858,8 @@ function showMatchInLoadedBlock(item) {
 
 function preparePoint(item, address, defaults = {}) {
   const req = state.lastRead.request;
-  const logicalCount = registerCount({function: req.function, data_type: item.data_type});
+  // Text belegt den ganzen gelesenen Block
+  const logicalCount = item.data_type === 'string' ? Number(req.count) : registerCount({function: req.function, data_type: item.data_type});
   const requestStart = Number(req.address);
   const requestCount = Number(req.count);
   const valueOffset = Number(address) - requestStart;
@@ -870,6 +872,7 @@ function preparePoint(item, address, defaults = {}) {
     name: defaults.name || '', unit: defaults.unit || '', scale: defaults.scale ?? 1, offset: 0,
     unit_id: req.unit_id, function: req.function, address,
     data_type: item.data_type, order: item.order, preview: item.value,
+    ...(item.data_type === 'string' ? {length: Number(req.count)} : {}),
     read_start: usesReadBlock ? requestStart : Number(address),
     read_count: usesReadBlock ? requestCount : logicalCount,
     value_offset: usesReadBlock ? valueOffset : 0,
@@ -942,12 +945,13 @@ function renderMonitor(values = {}) {
     const result = values[point.id];
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td><strong>${escapeHtml(point.name)}</strong><br><small class="muted">Unit/Slave ${point.unit_id} · FC0${point.function}</small></td>
+      <td><strong>${escapeHtml(point.name)}</strong><br><small class="muted">Unit-ID ${point.unit_id} · FC0${point.function}</small></td>
       <td>${point.address}</td>
       <td>${escapeHtml(point.data_type.toUpperCase())} · ${escapeHtml(point.order || 'BIT')}<br><small class="muted">Faktor ${point.scale} · Offset ${point.offset}</small>${Number(point.read_count || registerCount(point)) > registerCount(point) ? `<small class="block-read-note">liest Block ${point.read_start}–${Number(point.read_start) + Number(point.read_count) - 1} · Wert-Offset ${point.value_offset}</small>` : ''}</td>
       <td class="live-value">${result ? (result.ok ? `${formatNumber(result.value)} ${escapeHtml(point.unit)}` : 'FEHLER') : '–'}</td>
       <td>${sparkline(state.histories[point.id] || [])}</td>
-      <td><button class="delete-button" title="Datenpunkt entfernen">×</button></td>`;
+      <td class="row-actions">${[1, 3].includes(Number(point.function)) ? '<button class="write-button write-only" title="Wert schreiben (nur nach Freigabe)">✎</button>' : ''}<button class="delete-button" title="Datenpunkt entfernen">×</button></td>`;
+    row.querySelector('.write-button')?.addEventListener('click', () => window.openWriteDialog?.(point, result?.ok ? result.value : undefined));
     row.querySelector('.delete-button').addEventListener('click', () => {
       state.points = state.points.filter(item => item.id !== point.id); delete state.histories[point.id]; saveLocal(); renderMonitor();
     });
@@ -1052,7 +1056,7 @@ function applyProfile(data, notify = true) {
   $('#profileName').value = profile.name || ''; $('#profileProject').value = profile.project || '';
   $('#profileManufacturer').value = profile.manufacturer || ''; $('#profileModel').value = profile.model || '';
   $('#profileFirmware').value = profile.firmware || ''; $('#profileNotes').value = profile.notes || '';
-  if (data.connection) { els.host.value = data.connection.host || els.host.value; els.port.value = data.connection.port || 502; els.timeout.value = data.connection.timeout_ms || 800; els.transport.value = data.connection.transport || 'tcp'; updateTransportHint(); }
+  if (data.connection) { els.host.value = data.connection.host || els.host.value; els.port.value = data.connection.port || 502; els.timeout.value = data.connection.timeout_ms || 800; els.transport.value = data.connection.transport || 'tcp'; if ($('#waitMs')) $('#waitMs').value = data.connection.wait_ms || 0; updateTransportHint(); }
   state.points = data.points; state.histories = Object.fromEntries(state.points.map(point => [point.id, []]));
   saveLocal(); renderMonitor(); updateActiveProduct(); if (notify) toast(`${state.points.length} Datenpunkte importiert.`);
 }
@@ -1429,7 +1433,8 @@ $('#exportBtn').addEventListener('click', () => {
 
 function registerCount(point) {
   if ([1, 2].includes(Number(point.function))) return 1;
-  return {bool: 1, uint16: 1, int16: 1, uint32: 2, int32: 2, float32: 2, uint64: 4, int64: 4, float64: 4}[point.data_type] || 1;
+  if (point.data_type === 'string') return Number(point.length) || 1;
+  return {bool: 1, uint16: 1, int16: 1, float16: 1, uint32: 2, int32: 2, float32: 2, uint64: 4, int64: 4, float64: 4}[point.data_type] || 1;
 }
 
 function csvCell(value) {
@@ -1439,7 +1444,7 @@ function csvCell(value) {
 
 $('#csvExportBtn').addEventListener('click', () => {
   if (!state.points.length) { toast('Noch keine Datenpunkte für den Visu-Export vorhanden.', true); return; }
-  const header = ['Bezeichnung', 'Host', 'Port', 'Transport', 'Unit-ID (Slave-ID)', 'Funktionscode', 'Register', 'Registeranzahl', 'Datentyp', 'Byte-/Word-Reihenfolge', 'Faktor', 'Offset', 'Einheit', 'Abfrage-Start', 'Abfrageanzahl', 'Wert-Offset'];
+  const header = ['Bezeichnung', 'Host', 'Port', 'Transport', 'Unit-ID', 'Funktionscode', 'Register', 'Registeranzahl', 'Datentyp', 'Byte-/Word-Reihenfolge', 'Faktor', 'Offset', 'Einheit', 'Abfrage-Start', 'Abfrageanzahl', 'Wert-Offset'];
   const rows = state.points.map(point => [
     point.name, els.host.value.trim(), els.port.value, els.transport.value,
     point.unit_id, `FC${String(point.function).padStart(2, '0')}`, point.address, registerCount(point),

@@ -18,9 +18,12 @@ from ai_settings import AiSettingsStore
 from device_catalog import DEVICE_TYPE_LABELS, DeviceCatalogStore
 from gemini_lookup import lookup_device_points as gemini_lookup_device_points
 from gemini_lookup import lookup_quantity as gemini_lookup_quantity
+from ha_export import build_yaml as build_ha_yaml
 from modbus_core import (
     InspectorError,
     connect_test,
+    connection_status,
+    encode_value,
     list_interfaces,
     match_register_values,
     poll_points,
@@ -28,11 +31,14 @@ from modbus_core import (
     scan_network,
     scan_registers,
     scan_unit_ids,
+    set_write_mode,
+    write_mode_status,
+    write_value,
 )
 from profile_store import ProfileStore
 
 
-APP_VERSION = "0.2.6"
+APP_VERSION = "0.3.0"
 DEFAULT_PORT = 48722
 # Mitgelieferte Geräteeinträge; im Windows-Setup liegen sie neben dem Programmcode
 BUNDLED_CATALOG_DIR = Path(__file__).resolve().parent / "device-catalog-entries"
@@ -138,7 +144,7 @@ def health():
             "ok": True,
             "service": "CKO Modbus Inspector",
             "version": APP_VERSION,
-            "read_only": True,
+            "read_only": not write_mode_status()["enabled"],
         }
     )
 
@@ -188,6 +194,62 @@ def match_values():
 def poll():
     payload = request.get_json(force=True, silent=False) or {}
     return jsonify(poll_points(payload))
+
+
+@app.get("/api/connections")
+def connections():
+    return jsonify(connection_status())
+
+
+@app.get("/api/write-mode")
+def write_mode_get():
+    return jsonify(write_mode_status())
+
+
+@app.post("/api/write-mode")
+def write_mode_set():
+    payload = request.get_json(force=True, silent=True) or {}
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        return jsonify({"ok": False, "error": "Schreiben kann nur lokal freigegeben werden."}), 403
+    return jsonify(set_write_mode(bool(payload.get("enabled"))))
+
+
+@app.post("/api/encode-preview")
+def encode_preview():
+    """Zeigt, welche Registerwerte ein Schreibvorgang senden würde – ohne zu senden."""
+    payload = request.get_json(force=True, silent=False) or {}
+    function = int(payload.get("function", 3))
+    if function == 1:
+        on = str(payload.get("value")).strip().lower() in ("1", "true", "ein", "on", "an")
+        return jsonify({"ok": True, "function": "FC05", "registers": [], "hex": "EIN (0xFF00)" if on else "AUS (0x0000)"})
+    if function in (2, 4):
+        raise InspectorError("Discrete Inputs (FC02) und Input Register (FC04) sind nur lesbar.", 400)
+    data_type = str(payload.get("data_type", "uint16")).lower()
+    length = int(payload.get("length", 1) or 1) if data_type == "string" else None
+    registers = encode_value(payload.get("value"), data_type, payload.get("order"),
+                             float(payload.get("scale", 1) or 1), float(payload.get("offset", 0) or 0), length)
+    code = "FC16" if len(registers) > 1 or payload.get("prefer_fc16") else "FC06"
+    return jsonify({"ok": True, "function": code, "registers": registers,
+                    "hex": " ".join(f"0x{value:04X}" for value in registers)})
+
+
+@app.post("/api/write")
+def write():
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        return jsonify({"ok": False, "error": "Schreiben ist nur lokal erlaubt."}), 403
+    payload = request.get_json(force=True, silent=False) or {}
+    return jsonify(write_value(payload))
+
+
+@app.post("/api/export/home-assistant")
+def export_home_assistant():
+    payload = request.get_json(force=True, silent=False) or {}
+    try:
+        text = build_ha_yaml(payload.get("points") or [], payload.get("connection") or {},
+                             str(payload.get("name") or ""), int(payload.get("scan_interval") or 15))
+    except (ValueError, TypeError) as error:
+        raise InspectorError(str(error), 400)
+    return jsonify({"ok": True, "yaml": text})
 
 
 @app.get("/api/profile-library")

@@ -31,7 +31,7 @@
       </div>
       <div class="top-actions">
         <button id="aiSettingsBtn" class="chip-button" title="KI-Einstellungen (Online-Datenpunkt-Suche)">⚙ KI</button>
-        <span class="badge safe">Nur Lesen</span>
+        <button id="writeModeBtn" class="badge safe write-mode" type="button" title="Schreiben ist gesperrt. Klicken, um Schreiben für 30 Minuten freizugeben.">Nur Lesen</button>
         <span id="connectionStatus" class="status offline"><i></i>Nicht verbunden</span>
         <span class="version">v{{ app_version }}</span>
       </div>
@@ -47,7 +47,7 @@
           <button class="nav-item active" data-tab="products"><span>01</span>Gerät & Profil</button>
           <button class="nav-item" data-tab="network"><span>02</span>Netzwerk-Scan</button>
           <button class="nav-item" data-tab="connection"><span>03</span>Verbindung</button>
-          <button class="nav-item" data-tab="units"><span>04</span>Unit-/Slave-IDs</button>
+          <button class="nav-item" data-tab="units"><span>04</span>Unit-IDs</button>
           <button class="nav-item" data-tab="finder"><span>05</span>Register-Finder</button>
           <button class="nav-item" data-tab="decoder"><span>06</span>Decoder</button>
           <button class="nav-item" data-tab="monitor"><span>07</span>Live-Monitor <b id="pointCount">0</b></button>
@@ -119,7 +119,7 @@
         </article>
         <article class="card glass compact info-card">
           <span class="info-symbol">i</span>
-          <div><strong>Produktwissen und Projektanschluss getrennt</strong><p>Register, Datentypen und Faktoren können wiederverwendet werden. IP-Adresse, Port und Unit-/Slave-ID werden für das aktuelle Projekt geprüft und angepasst.</p></div>
+          <div><strong>Produktwissen und Projektanschluss getrennt</strong><p>Register, Datentypen und Faktoren können wiederverwendet werden. IP-Adresse, Port und Unit-ID werden für das aktuelle Projekt geprüft und angepasst.</p></div>
         </article>
         <article class="card glass modbus-info-card">
           <div class="card-head"><div><span class="icon">⚙</span><h3>Was ist Modbus? Worauf muss ich achten?</h3></div></div>
@@ -133,7 +133,7 @@
               <ul>
                 <li><strong>Holding Register (FC03):</strong> Lesbare und schreibbare Werte – meist Konfiguration oder aktuelle Messwerte</li>
                 <li><strong>Input Register (FC04):</strong> Nur lesbar – aktuelle Messwerte und Status</li>
-                <li><strong>Unit-ID / Slave-ID:</strong> Adresse eines Geräts hinter einem Gateway (0–247; native TCP-Geräte ignorieren oft diese ID)</li>
+                <li><strong>Unit-ID</strong> (auch Slave-ID oder Device-ID genannt)<strong>:</strong> Adresse eines Geräts hinter einem Gateway (0–247; native TCP-Geräte ignorieren oft diese ID)</li>
                 <li><strong>Register-Adresse:</strong> Nullbasiert übertragen – Dokumentation mit „40001" kann intern Adresse 0 oder 1 meinen</li>
                 <li><strong>Datentypen:</strong> Uint16 (16 Bit), Int16, Float32 (2 Register), Int32, Float64 (4 Register)</li>
               </ul>
@@ -168,6 +168,7 @@
               <label class="span-2">IP-Adresse oder Hostname<input id="host" value="192.168.1.100" spellcheck="false"></label>
               <label>Port<input id="port" type="number" value="502" min="1" max="65535"></label>
               <label>Timeout (ms)<input id="timeout" type="number" value="800" min="50" max="10000"></label>
+              <label class="span-2">Pause zwischen Anfragen (ms)<input id="waitMs" type="number" value="0" min="0" max="2000" step="10"><small class="field-note">Für langsame Geräte und Gateways, z. B. 30–100 ms. Entspricht <code>message_wait_milliseconds</code> in Home Assistant.</small></label>
             </div>
             <button id="connectBtn" class="primary wide"><span>Verbindung prüfen</span><i>→</i></button>
             <div id="connectResult" class="result-box muted">Noch keine Verbindung geprüft.</div>
@@ -176,7 +177,13 @@
         </div>
         <article class="card glass compact info-card">
           <span class="info-symbol">i</span>
-          <div><strong>Sicherer Start</strong><p>Diese MVP-Version verwendet ausschliesslich FC01–FC04. Es werden keine Coils oder Register geschrieben.</p></div>
+          <div><strong>Sicherer Start</strong><p>Gelesen wird mit FC01–FC04. Schreiben (FC05/FC06/FC16) ist gesperrt und muss oben über «Nur Lesen» bewusst für 30 Minuten freigegeben werden – jeder Schreibvorgang wird vorher angezeigt, bestätigt und zurückgelesen.</p></div>
+        </article>
+        <article class="card glass connection-status-card">
+          <div class="card-head"><div><span class="icon">⇄</span><h3>Verbindungsstatus</h3></div><button id="connectionStatusBtn" class="secondary small" type="button">Aktualisieren</button></div>
+          <p class="field-note">Alle Funktionen teilen sich eine Verbindung pro Gerät und fragen nacheinander ab – wichtig für Geräte, die nur wenige gleichzeitige Modbus-Sitzungen annehmen. Nach einem Abbruch wird automatisch neu verbunden, ungenutzte Verbindungen schliessen nach 60 s.</p>
+          <div class="table-wrap"><table><thead><tr><th>Verbindung</th><th>Status</th><th>Anfragen</th><th>Fehler/Ausnahmen</th><th>Neu verbunden</th><th>Genutzt von</th></tr></thead><tbody id="connectionStatus2"><tr class="empty"><td colspan="6">Noch keine Verbindung aufgebaut.</td></tr></tbody></table></div>
+          <div id="connectionLastError" class="alert warning hidden"></div>
         </article>
       </section>
 
@@ -207,18 +214,20 @@
       </section>
 
       <section class="tab-page" id="tab-units">
-        <div class="page-heading"><div><span class="eyebrow">SCHRITT 04</span><h2>Unit-IDs (Slave-IDs) finden</h2><p>Prüft, welche Teilnehmer hinter dem verbundenen Ziel antworten.</p></div></div>
+        <div class="page-heading"><div><span class="eyebrow">SCHRITT 04</span><h2>Unit-IDs finden</h2><p>Prüft, welche Teilnehmer hinter dem verbundenen Ziel antworten. Die Unit-ID heisst in Handbüchern oft Slave-ID, in Home Assistant <code>device_address</code>.</p></div></div>
         <article class="card glass">
           <div class="form-grid unit-grid">
             <label>Start-ID<input id="unitStart" type="number" value="1" min="0" max="247"></label>
             <label>End-ID<input id="unitEnd" type="number" value="20" min="0" max="247"></label>
             <label>Test-Funktion<select id="unitFunction"><option value="3">FC03 Holding</option><option value="4">FC04 Input</option><option value="1">FC01 Coils</option><option value="2">FC02 Discrete</option></select></label>
             <label>Testadresse<input id="unitAddress" type="number" value="0" min="0" max="65535"></label>
-            <button id="unitScanBtn" class="primary align-end"><span>Unit-/Slave-IDs scannen</span><i>⌕</i></button>
+            <label>Pause (ms)<input id="unitDelay" type="number" value="0" min="0" max="5000" step="10"></label>
+            <label class="check-label" title="Standard: eine gemeinsame Verbindung für alle IDs. Manche Gateways hängen nach einer fehlenden Antwort – dann pro ID neu verbinden."><input id="unitReconnect" type="checkbox"> pro ID neu verbinden</label>
+            <button id="unitScanBtn" class="primary align-end"><span>Unit-IDs scannen</span><i>⌕</i></button>
           </div>
           <div id="unitSummary" class="inline-summary hidden"></div>
           <div id="unitWarning" class="alert warning hidden"></div>
-          <div class="table-wrap"><table><thead><tr><th>Unit-ID (Slave-ID)</th><th>Ergebnis</th><th>Antwortzeit</th><th></th></tr></thead><tbody id="unitResults"><tr class="empty"><td colspan="4">Noch kein Unit-/Slave-Scan ausgeführt.</td></tr></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Unit-ID</th><th>Ergebnis</th><th>Antwortzeit</th><th></th></tr></thead><tbody id="unitResults"><tr class="empty"><td colspan="4">Noch kein Unit-ID-Scan ausgeführt.</td></tr></tbody></table></div>
         </article>
         <article class="card glass compact info-card">
           <span class="info-symbol">i</span>
@@ -230,7 +239,7 @@
         <div class="page-heading"><div><span class="eyebrow">SCHRITT 05</span><h2>Register finden</h2><p>Durchsucht einen begrenzten Bereich und vergleicht zwei Momentaufnahmen.</p></div></div>
         <article class="card glass">
           <div class="form-grid finder-grid">
-            <label>Unit-ID (Slave-ID)<input id="finderUnit" type="number" value="1" min="0" max="247"></label>
+            <label>Unit-ID<input id="finderUnit" type="number" value="1" min="0" max="247"></label>
             <label>Funktion<select id="finderFunction"><option value="0">FC03 + FC04</option><option value="3">FC03 Holding</option><option value="4">FC04 Input</option></select></label>
             <label>Startadresse<input id="finderStart" type="number" value="0" min="0" max="65535"></label>
             <label>Endadresse<input id="finderEnd" type="number" value="99" min="0" max="65535"></label>
@@ -265,11 +274,12 @@
         <div class="page-heading"><div><span class="eyebrow">SCHRITT 06</span><h2>Register entschlüsseln</h2><p>Ein Rohwert – alle üblichen Interpretationen gleichzeitig.</p></div></div>
         <article class="card glass decoder-controls">
           <div class="form-grid decoder-grid">
-            <label>Unit-ID (Slave-ID)<input id="decoderUnit" type="number" value="1" min="0" max="247"></label>
+            <label>Unit-ID<input id="decoderUnit" type="number" value="1" min="0" max="247"></label>
             <label>Funktion<select id="decoderFunction"><option value="3">FC03 Holding</option><option value="4">FC04 Input</option><option value="1">FC01 Coils</option><option value="2">FC02 Discrete</option></select></label>
             <label>Startadresse<input id="decoderAddress" type="number" value="0" min="0" max="65535"></label>
             <label>Anzahl<input id="decoderCount" type="number" value="4" min="1" max="125"></label>
             <button id="readBtn" class="primary align-end"><span>Register lesen</span><i>↓</i></button>
+            <button id="decoderWriteBtn" class="secondary align-end write-only" type="button" title="Wert an diese Adresse schreiben (nur nach Freigabe)">✎ Schreiben</button>
           </div>
           <div class="decoder-navigation">
             <div class="button-row"><button id="decoderPrevBtn" class="secondary" disabled>← Vorheriges Register</button><button id="decoderNextBtn" class="secondary" disabled>Nächstes Register →</button></div>
@@ -294,7 +304,7 @@
           <div id="matchRecommendation" class="match-recommendation hidden"></div>
           <div id="matchTable" class="table-wrap hidden"><table><thead><tr><th>Rang</th><th>Adresse</th><th>Interpretation</th><th>Faktor</th><th>Ergebnis</th><th>Abweichung</th><th>Bewertung</th><th></th></tr></thead><tbody id="matchResults"></tbody></table></div>
         </article>
-        <div id="decoderEmpty" class="empty-state glass"><div class="radar">⌁</div><h3>Bereit zum Lesen</h3><p>Wähle Unit-ID (Slave-ID), Funktion und Startadresse. Für 32-Bit-Werte werden zwei, für 64-Bit-Werte vier Register benötigt.</p></div>
+        <div id="decoderEmpty" class="empty-state glass"><div class="radar">⌁</div><h3>Bereit zum Lesen</h3><p>Wähle Unit-ID, Funktion und Startadresse. Für 32-Bit-Werte werden zwei, für 64-Bit-Werte vier Register benötigt.</p></div>
         <div id="decoderOutput" class="hidden">
           <article class="card glass raw-card"><div><span class="eyebrow">ROHREGISTER</span><div id="rawValues" class="raw-values"></div></div><span id="readTimestamp" class="muted"></span></article>
           <div id="decodeGroups" class="decode-groups"></div>
@@ -304,7 +314,7 @@
       <section class="tab-page" id="tab-monitor">
         <div class="page-heading monitor-heading">
           <div><span class="eyebrow">SCHRITT 07</span><h2>Live-Monitor & Geräteprofil</h2><p>Geprüfte Datenpunkte sammeln, beobachten und in der Profilbibliothek sichern.</p></div>
-          <div class="button-row"><button id="importBtn" class="secondary">Profil-Datei importieren</button><button id="csvExportBtn" class="secondary">Visu-CSV exportieren</button><button id="exportBtn" class="secondary">.hbmodbus exportieren</button><input id="importFile" type="file" accept=".hbmodbus,.json" hidden></div>
+          <div class="button-row"><button id="importBtn" class="secondary">Profil-Datei importieren</button><button id="haExportBtn" class="secondary" title="Datenpunkte als YAML für die Home-Assistant-Integration «Modbus»">Home Assistant (YAML)</button><button id="csvExportBtn" class="secondary">Visu-CSV exportieren</button><button id="exportBtn" class="secondary">.hbmodbus exportieren</button><input id="importFile" type="file" accept=".hbmodbus,.json" hidden></div>
         </div>
         <article class="card glass profile-card">
           <div class="form-grid profile-grid">
@@ -353,6 +363,25 @@
     </form>
   </dialog>
 
+  <dialog id="writeDialog">
+    <form method="dialog" class="dialog-card glass" id="writeForm">
+      <div class="dialog-head"><div><span class="eyebrow write-eyebrow">SCHREIBEN</span><h3>Wert schreiben</h3></div><button value="cancel" class="icon-button" title="Abbrechen">×</button></div>
+      <div id="writeTarget" class="result-box muted"></div>
+      <div class="form-grid">
+        <label>Datentyp<select id="writeType"><option>uint16</option><option>int16</option><option>float16</option><option>uint32</option><option>int32</option><option>float32</option><option>uint64</option><option>int64</option><option>float64</option><option>string</option></select></label>
+        <label>Byte-/Word-Reihenfolge<select id="writeOrder"></select></label>
+        <label>Faktor<input id="writeScale" type="number" step="any" value="1"></label>
+        <label>Offset<input id="writeOffset" type="number" step="any" value="0"></label>
+        <label id="writeLengthLabel" class="hidden">Textlänge (Register)<input id="writeLength" type="number" min="1" max="123" value="8"></label>
+        <label class="span-2">Neuer Wert<input id="writeValue" required autocomplete="off" placeholder="Wert in Anzeige-Einheit"></label>
+        <label class="check-label span-2"><input id="writeFc16" type="checkbox"> Einzelregister mit FC16 statt FC06 schreiben (manche Geräte verlangen das)</label>
+      </div>
+      <div id="writePreview" class="result-box muted">Vorschau erscheint nach der Eingabe.</div>
+      <label class="check-label write-confirm"><input id="writeConfirm" type="checkbox"> Ich habe geprüft, dass das Schreiben dieses Werts die Anlage nicht gefährdet.</label>
+      <div id="writeResult" class="result-box hidden"></div>
+      <div class="dialog-actions"><button value="cancel" class="secondary">Schliessen</button><button id="writeSendBtn" type="button" class="danger" disabled>Schreiben</button></div>
+    </form>
+  </dialog>
   <dialog id="aiSettingsDialog">
     <form method="dialog" class="dialog-card glass">
       <div class="dialog-head"><div><span class="eyebrow">KI-EINSTELLUNGEN</span><h3>Online-Datenpunkt-Suche</h3></div><button id="closeAiSettingsDialogBtn" value="cancel" class="icon-button" title="Abbrechen">×</button></div>
@@ -372,5 +401,6 @@
   <script>window.HB_APP_VERSION = {{ app_version|tojson }};</script>
   <script src="{{ url_for('static', filename='app.js') }}?v={{ app_version }}"></script>
   <script src="{{ url_for('static', filename='workflow.js') }}?v={{ app_version }}"></script>
+  <script src="{{ url_for('static', filename='connection-write.js') }}?v={{ app_version }}"></script>
 </body>
 </html>

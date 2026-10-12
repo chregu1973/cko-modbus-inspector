@@ -1,11 +1,13 @@
 # CKO Modbus Inspector
 
-Lokales Inbetriebnahme- und Diagnosewerkzeug für Modbus TCP sowie Modbus RTU über TCP. Die MVP-Version scannt lokale Netze, sucht Unit-IDs (Slave-IDs), liest FC01–FC04, zeigt Registerwerte gleichzeitig in allen üblichen Byte-/Word-Reihenfolgen und sammelt geprüfte Datenpunkte in wiederverwendbaren Geräteprofilen.
+Lokales Inbetriebnahme- und Diagnosewerkzeug für Modbus TCP sowie Modbus RTU über TCP. Die MVP-Version scannt lokale Netze, sucht Unit-IDs, liest FC01–FC04, zeigt Registerwerte gleichzeitig in allen üblichen Byte-/Word-Reihenfolgen und sammelt geprüfte Datenpunkte in wiederverwendbaren Geräteprofilen.
 
-## Sicherheitsprinzip der MVP-Version
+## Sicherheitsprinzip
 
-- ausschliesslich lesende Funktionscodes FC01–FC04
-- keine Schreibfunktion
+- Lesen mit FC01–FC04; **Schreiben ist standardmässig gesperrt**
+- Schreiben (FC05 Coil, FC06 Einzelregister, FC16 mehrere Register) nur nach bewusster Freigabe über «Nur Lesen» oben rechts; die Freigabe gilt 30 Minuten und nur vom eigenen PC aus
+- jeder Schreibvorgang zeigt vorher die genauen Registerwerte und den Funktionscode, muss bestätigt werden und wird zur Kontrolle zurückgelesen; Input-Register und Discrete Inputs sind nicht beschreibbar
+- eine gemeinsame Verbindung pro Gerät: Decoder, Live-Monitor, Register-Finder, Unit-ID-Scan und Schreiben fragen nacheinander ab – schont Geräte mit wenigen Modbus-Sitzungen
 - Webserver nur auf `127.0.0.1`
 - Netzwerkscan auf private/lokale IPv4-Netze und maximal `/24` beschränkt
 - Geräteprofile werden in einer lokalen SQLite-Bibliothek auf dem PC gespeichert
@@ -34,7 +36,7 @@ Für Entwicklung und Linux: Python 3.10+ installieren, dann `start-windows.bat` 
 3. Unter **Netzwerk-Scan** Geräte mit geöffnetem Port 502 finden. VPN-Zielnetze können als CIDR manuell eingetragen werden.
 4. Den gewünschten Treffer übernehmen und unter **Verbindung** den TCP-Zugang prüfen.
 5. Die Übertragungsart wählen: **Modbus TCP** für echte TCP-Geräte/Protokoll-Gateways oder **Modbus RTU über TCP** für transparente Seriell-Server.
-6. Hinter einem Gateway unter **Unit-IDs (Slave-IDs)** die Teilnehmer suchen. Auch eine Modbus-Exception 2 bestätigt, dass die Unit antwortet; nur die Testadresse ist dann ungültig.
+6. Hinter einem Gateway unter **Unit-IDs** die Teilnehmer suchen. Auch eine Modbus-Exception 2 bestätigt, dass die Unit antwortet; nur die Testadresse ist dann ungültig.
 7. Wenn die Registeradressen unbekannt sind, unter **Register-Finder** einen Bereich mit FC03, FC04 oder beiden durchsuchen.
 8. Optional eine Referenz speichern, am Gerät gezielt einen Zustand ändern und erneut scannen. Veränderte Register werden hervorgehoben.
 9. Einen Treffer direkt im **Decoder** öffnen. Die Rohregister sind anklickbar; mit Vor/Zurück lässt sich die Startadresse schrittweise verschieben.
@@ -47,7 +49,7 @@ Für Entwicklung und Linux: Python 3.10+ installieren, dann `start-windows.bat` 
 
 ## Lokale Profilbibliothek
 
-Die Bibliothek speichert Produktname, Hersteller, Modell, Firmware, Notizen, die zuletzt verwendete Verbindung und alle bestätigten Datenpunkte. Bei einem neuen Projekt kann das Registerwissen als Vorlage geladen werden; IP-Adresse, Port und Unit-/Slave-ID müssen anschliessend für die neue Anlage geprüft werden.
+Die Bibliothek speichert Produktname, Hersteller, Modell, Firmware, Notizen, die zuletzt verwendete Verbindung und alle bestätigten Datenpunkte. Bei einem neuen Projekt kann das Registerwissen als Vorlage geladen werden; IP-Adresse, Port und Unit-ID müssen anschliessend für die neue Anlage geprüft werden.
 
 Standardmässig liegt die SQLite-Datei unter Windows weiterhin in `%LOCALAPPDATA%\hbTec\ModbusInspector\profiles.sqlite3`. Unter Linux wird `$XDG_DATA_HOME/hbtec-modbus-inspector/profiles.sqlite3` beziehungsweise `~/.local/share/hbtec-modbus-inspector/profiles.sqlite3` verwendet. Diese internen Pfade bleiben aus Kompatibilitätsgründen erhalten, damit vorhandene Profile nach dem Wechsel auf das CKO-Branding automatisch weiterverwendet werden. Mit `HBMODBUS_DATA_DIR` kann ein anderer Speicherordner festgelegt werden.
 
@@ -155,7 +157,7 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 - passende Kandidaten lassen sich direkt anzeigen oder mit gefundener Skalierung in den Monitor übernehmen
 - Live-Monitor kann eine laufende HTTP-/Modbus-Abfrage jetzt sofort abbrechen
 - Monitorpunkt-Dialog lässt sich zuverlässig über Abbrechen, ×, Esc oder Klick auf den Hintergrund schliessen
-- Bezeichnungen um „Unit-ID (Slave-ID)“ ergänzt
+- Bezeichnungen um „Unit-ID“ ergänzt
 - Nullregister bleiben sichtbar, wenn sie Teil eines möglichen benachbarten 32-Bit-Werts sind
 - neuer Beenden-Button stoppt Monitor und lokalen Python-Server
 
@@ -175,7 +177,7 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 - negative Leistungswerte bevorzugen plausible vorzeichenbehaftete 32-Bit-Interpretationen
 - gleichwertige signed/unsigned- und Reihenfolge-Dubletten werden zusammengefasst
 - Ergebnisliste auf fünf eindeutige Kandidaten reduziert und um Vertrauenswert sowie Begründung ergänzt
-- beste plausible Interpretation erscheint als fertiger Visu-Datenpunkt mit Unit-/Slave-ID, FC, Register, Datentyp, Reihenfolge, Faktor und Live-Wert
+- beste plausible Interpretation erscheint als fertiger Visu-Datenpunkt mit Unit-ID, FC, Register, Datentyp, Reihenfolge, Faktor und Live-Wert
 - Visu-Konfiguration kann kopiert oder direkt in den Live-Monitor übernommen werden
 
 ## Änderungen in 0.1.8
@@ -275,6 +277,16 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 ## Änderungen in 0.2.6
 
 - Seitenleiste: die Schritte scrollen zwischen Logo und unterem Block, statt verdeckt zu werden; sehr niedrige Fenster scrollen die ganze Seitenleiste; bei wenig Höhe kompakteres Logo.
+
+## Änderungen in 0.3.0
+
+- Gemeinsame Verbindung pro Gerät (wie in Home Assistant 2026.9/10): alle Funktionen teilen eine Verbindung und fragen nacheinander ab; nach Abbrüchen wird automatisch neu verbunden (mit wachsendem Abstand nach Fehlschlägen), ungenutzte Verbindungen schliessen nach 60 s
+- Verbindungsstatus in Schritt 03: offen seit, Anfragen, Fehler/Ausnahmen, Wiederverbindungen, wer die Verbindung nutzt; verständlicher Hinweis, wenn ein Gerät keine weitere Sitzung annimmt
+- Pause zwischen Anfragen (entspricht `message_wait_milliseconds` in Home Assistant); Unit-ID-Scan mit Pause und Option «pro ID neu verbinden»
+- Schreiben: Coils (FC05) und Holding-Register (FC06/FC16) mit Freigabe, Vorschau, Bestätigung und Rücklesen – aus dem Live-Monitor oder dem Decoder
+- Export für Home Assistant: geprüfte Datenpunkte als YAML für die Integration «Modbus» (`device_address`, `input_type`, `data_type`, `swap`, `scale`, `offset`, `precision`)
+- neue Datentypen Float16 und String (Text, z. B. Seriennummer oder Modellname)
+- einheitlicher Begriff «Unit-ID» (Slave-ID / Device-ID nur noch als Erklärung)
 
 ## Open Source
 

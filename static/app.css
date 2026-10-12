@@ -760,3 +760,22 @@ dialog::backdrop { background: rgba(35, 51, 72, .38); backdrop-filter: blur(3px)
   .sidebar-note p { display: none; }
   .nav-item { padding-top: 8px; padding-bottom: 8px; }
 }
+
+/* Schreiben (nur nach Freigabe) und Verbindungsstatus */
+.badge.write-mode { cursor: pointer; font: inherit; font-size: 12px; }
+.badge.danger-badge { color: #fff; background: #d6243a; border: 1px solid #b51d31; box-shadow: 0 0 0 3px rgba(214, 36, 58, .15); }
+.write-only { display: none !important; }
+body.write-enabled .write-only { display: inline-flex !important; }
+.row-actions { display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
+.write-button { border: 1px solid #f0b4bc; background: #fff4f5; color: #c93f4c; border-radius: 8px; width: 30px; height: 30px; cursor: pointer; }
+.write-button:hover { border-color: #d6243a; }
+button.danger { color: #fff; background: #d6243a; border: 1px solid #b51d31; border-radius: 10px; padding: 11px 18px; font-weight: 700; cursor: pointer; }
+button.danger:disabled { opacity: .45; cursor: not-allowed; }
+.write-eyebrow { color: #d6243a !important; }
+.write-confirm { margin: 12px 0 4px; white-space: normal !important; font-size: 12px; }
+#writeDialog .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+#writeDialog .result-box { margin-top: 12px; }
+.connection-status-card td.good { color: #18804b; font-weight: 700; }
+.connection-status-card td.bad { color: #d6243a; font-weight: 700; }
+.connection-status-card .field-note { margin: 0 0 10px; }
+button.small { padding: 7px 12px; font-size: 12px; }

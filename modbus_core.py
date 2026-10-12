@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import inspect
 import ipaddress
 import math
@@ -11,8 +12,11 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
+
+from connection_pool import ConnectionPool, ConnectionUnavailable
 
 try:
     import psutil
@@ -48,6 +52,7 @@ TYPE_COUNTS = {
     "bool": 1,
     "uint16": 1,
     "int16": 1,
+    "float16": 1,
     "uint32": 2,
     "int32": 2,
     "float32": 2,
@@ -61,12 +66,13 @@ MATCH_TYPE_MODES = {
     "16": ("uint16", "int16"),
     "32": ("uint32", "int32", "float32"),
     "64": ("uint64", "int64", "float64"),
-    "all": ("uint16", "int16", "uint32", "int32", "float32", "uint64", "int64", "float64"),
+    "all": ("uint16", "int16", "float16", "uint32", "int32", "float32", "uint64", "int64", "float64"),
 }
 
 MATCH_LABELS = {
     "uint16": "UInt16",
     "int16": "Int16",
+    "float16": "Float16",
     "uint32": "UInt32",
     "int32": "Int32",
     "float32": "Float32",
@@ -153,8 +159,8 @@ EXCEPTION_HINTS = {
     4: ("Gerätefehler", "Das Gerät konnte die Anfrage intern nicht ausführen. Später erneut versuchen oder den Gerätezustand prüfen."),
     5: ("Bestätigung – Verarbeitung läuft", "Das Gerät bearbeitet die Anfrage noch. Kurz warten und erneut lesen."),
     6: ("Gerät beschäftigt", "Das Gerät ist ausgelastet, z. B. durch einen anderen Master. Abfrageintervall erhöhen und erneut versuchen."),
-    10: ("Gateway: Pfad nicht verfügbar", "Das Gateway kann das Ziel nicht erreichen. Gateway-Konfiguration und Unit-/Slave-ID prüfen."),
-    11: ("Gateway: Zielgerät antwortet nicht", "Hinter dem Gateway antwortet unter dieser Unit-/Slave-ID niemand. ID, Verkabelung und Baudrate prüfen."),
+    10: ("Gateway: Pfad nicht verfügbar", "Das Gateway kann das Ziel nicht erreichen. Gateway-Konfiguration und Unit-ID prüfen."),
+    11: ("Gateway: Zielgerät antwortet nicht", "Hinter dem Gateway antwortet unter dieser Unit-ID niemand. ID, Verkabelung und Baudrate prüfen."),
 }
 
 
@@ -173,6 +179,7 @@ class Target:
     port: int
     timeout: float
     transport: str
+    wait_ms: int = 0
 
 
 def _int(value: Any, name: str, minimum: int, maximum: int) -> int:
@@ -222,7 +229,8 @@ def _target(payload: dict[str, Any]) -> Target:
     transport = str(connection.get("transport", "tcp")).strip().lower()
     if transport not in ("tcp", "rtu_tcp"):
         raise InspectorError("Unbekannte Übertragungsart. Erlaubt sind Modbus TCP und RTU über TCP.")
-    return Target(host, port, timeout_ms / 1000, transport)
+    wait_ms = _int(connection.get("wait_ms", 0) or 0, "Pause zwischen Anfragen", 0, 2000)
+    return Target(host, port, timeout_ms / 1000, transport, wait_ms)
 
 
 def _require_modbus():
@@ -268,6 +276,40 @@ def _call_read(client, function: int, address: int, count: int, unit_id: int):
     return method(**kwargs)
 
 
+class _SharedClient:
+    """Verhält sich wie ein pymodbus-Client, leitet Anfragen aber über die gemeinsame Verbindung."""
+
+    def __init__(self, handle):
+        self._handle = handle
+
+    def __getattr__(self, name: str):
+        real = getattr(self._handle.client, name)
+        if not callable(real):
+            return real
+
+        @functools.wraps(real)  # Signatur bleibt erhalten (device_id/slave/unit-Erkennung)
+        def call(*args, **kwargs):
+            return self._handle.call(lambda client: getattr(client, name)(*args, **kwargs))
+
+        return call
+
+
+POOL = ConnectionPool(lambda target: _client(target))
+
+
+@contextmanager
+def _shared(target: Target, user: str, fresh: bool = False):
+    try:
+        with POOL.session(target, user, target.wait_ms, fresh=fresh) as handle:
+            yield _SharedClient(handle)
+    except ConnectionUnavailable as error:
+        raise InspectorError(str(error), 503)
+
+
+def connection_status() -> dict[str, Any]:
+    return {"ok": True, "connections": POOL.status()}
+
+
 def _safe_value(value: Any) -> Any:
     if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
         return str(value)
@@ -285,10 +327,22 @@ def _bytes_for_order(registers: list[int], order: str) -> bytes:
     return bytes(mapping[label] for label in order)
 
 
+def decode_string(registers: list[int], order: str | None = "AB") -> str:
+    """Text aus Registern: je Register zwei Zeichen (AB = High-Byte zuerst, BA = vertauscht), Nullbytes am Ende entfernt."""
+    data = b"".join(int(register & 0xFFFF).to_bytes(2, "big" if order != "BA" else "little") for register in registers)
+    return data.split(b"\x00", 1)[0].decode("latin-1").strip()
+
+
+def _printable_ratio(text: str) -> float:
+    return sum(ch.isprintable() for ch in text) / len(text) if text else 0.0
+
+
 def decode_selected(registers: list[int], data_type: str, order: str | None = None) -> Any:
     data_type = str(data_type).lower()
     if data_type == "bool":
         return bool(registers[0])
+    if data_type == "string":
+        return decode_string(registers, order or "AB")
     if data_type not in TYPE_COUNTS:
         raise InspectorError(f"Unbekannter Datentyp: {data_type}")
     count = TYPE_COUNTS[data_type]
@@ -302,6 +356,7 @@ def decode_selected(registers: list[int], data_type: str, order: str | None = No
     formats = {
         "uint16": ">H",
         "int16": ">h",
+        "float16": ">e",
         "uint32": ">I",
         "int32": ">i",
         "float32": ">f",
@@ -324,6 +379,7 @@ def decode_registers(registers: list[int]) -> dict[str, Any]:
                 [
                     {"type": "UInt16", "data_type": "uint16", "order": order, "value": decode_selected(registers, "uint16", order)},
                     {"type": "Int16", "data_type": "int16", "order": order, "value": decode_selected(registers, "int16", order)},
+                    {"type": "Float16", "data_type": "float16", "order": order, "value": decode_selected(registers, "float16", order)},
                 ]
             )
         result["groups"].append({"label": "16-Bit", "count": 1, "rows": rows})
@@ -339,6 +395,14 @@ def decode_registers(registers: list[int]) -> dict[str, Any]:
             for data_type, label in (("uint64", "UInt64"), ("int64", "Int64"), ("float64", "Float64")):
                 rows.append({"type": label, "data_type": data_type, "order": order, "value": decode_selected(registers, data_type, order)})
         result["groups"].append({"label": "64-Bit", "count": 4, "rows": rows})
+    # Text (z. B. Seriennummer, Modellname): ganzer gelesener Block, nur wenn überwiegend druckbar
+    rows = []
+    for order in ORDERS[2]:
+        text = decode_string(registers, order)
+        if text and _printable_ratio(text) >= 0.9:
+            rows.append({"type": "String", "data_type": "string", "order": order, "value": text})
+    if rows:
+        result["groups"].append({"label": "Text", "count": len(registers), "rows": rows})
     return result
 
 
@@ -680,15 +744,9 @@ def list_interfaces() -> list[dict[str, str]]:
 def connect_test(payload: dict[str, Any]) -> dict[str, Any]:
     target = _target(payload)
     started = time.perf_counter()
-    client = _client(target)
-    try:
-        connected = bool(client.connect())
-    except (OSError, ModbusException) as error:
-        raise InspectorError(f"Verbindung fehlgeschlagen: {error}", 502)
-    finally:
-        client.close()
-    if not connected:
-        raise InspectorError("Keine TCP-Verbindung zum Zielgerät.", 502)
+    # Verbindungstest über die gemeinsame Verbindung: öffnet keine zusätzliche Sitzung
+    with _shared(target, "Verbindung", fresh=bool(payload.get("fresh"))):
+        pass
     return {
         "ok": True,
         "host": target.host,
@@ -1026,7 +1084,7 @@ def scan_network(payload: dict[str, Any]) -> dict[str, Any]:
 
 def _read_payload(payload: dict[str, Any]) -> tuple[Target, int, int, int, int]:
     target = _target(payload)
-    unit_id = _int(payload.get("unit_id", 1), "Unit-ID (Slave-ID)", 0, 247)
+    unit_id = _int(payload.get("unit_id", 1), "Unit-ID", 0, 247)
     function = _int(payload.get("function", 3), "Funktionscode", 1, 4)
     address = _int(payload.get("address", 0), "Registeradresse", 0, 65535)
     max_count = 2000 if function in (1, 2) else 125
@@ -1071,29 +1129,25 @@ def read_values(payload: dict[str, Any]) -> dict[str, Any]:
     target, unit_id, function, address, count = _read_payload(payload)
     requested = count
     notice = None
-    client = _client(target)
     try:
-        if not client.connect():
-            raise InspectorError("Keine TCP-Verbindung zum Zielgerät.", 502)
-        response = _call_read(client, function, address, count, unit_id)
-        code = getattr(response, "exception_code", None) if response is not None and response.isError() else None
-        if code is not None and int(code) in (2, 3):
-            if count > 1:
-                readable, partial = _largest_readable_count(client, function, address, count, unit_id)
-                if readable:
-                    response, count = partial, readable
-                    notice = (
-                        f"Das Gerät lehnt {requested} Register ab {address} als Block ab (Ausnahme {code}). "
-                        f"Gelesen wurden die lesbaren {readable} Register {address}–{address + readable - 1}."
-                    )
-            if not _readable(response):
-                raise InspectorError(exception_text(code) + _neighbour_hint(client, function, address, unit_id), 502)
+        with _shared(target, "Decoder") as client:
+            response = _call_read(client, function, address, count, unit_id)
+            code = getattr(response, "exception_code", None) if response is not None and response.isError() else None
+            if code is not None and int(code) in (2, 3):
+                if count > 1:
+                    readable, partial = _largest_readable_count(client, function, address, count, unit_id)
+                    if readable:
+                        response, count = partial, readable
+                        notice = (
+                            f"Das Gerät lehnt {requested} Register ab {address} als Block ab (Ausnahme {code}). "
+                            f"Gelesen wurden die lesbaren {readable} Register {address}–{address + readable - 1}."
+                        )
+                if not _readable(response):
+                    raise InspectorError(exception_text(code) + _neighbour_hint(client, function, address, unit_id), 502)
     except InspectorError:
         raise
     except (OSError, ModbusException) as error:
         raise InspectorError(f"Modbus-Abfrage fehlgeschlagen: {error}", 502)
-    finally:
-        client.close()
     if response is None:
         raise InspectorError("Das Gerät hat nicht geantwortet.", 504)
     if response.isError():
@@ -1121,6 +1175,31 @@ def read_values(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _probe_unit(client, function: int, address: int, unit_id: int, started: float) -> tuple[dict[str, Any], str | None]:
+    """Eine Unit-ID prüfen; liefert Ergebnis und Fingerabdruck (nur wenn die Unit geantwortet hat)."""
+    def latency() -> float:
+        return round((time.perf_counter() - started) * 1000, 1)
+
+    try:
+        response = _call_read(client, function, address, 1, unit_id)
+    except (OSError, ModbusException) as error:
+        detail = str(error).strip() or error.__class__.__name__
+        return {"unit_id": unit_id, "status": "timeout", "detail": f"Keine Antwort: {detail}", "latency_ms": latency()}, None
+    if response is None:
+        return {"unit_id": unit_id, "status": "no_response", "detail": "Keine Modbus-Antwort", "latency_ms": latency()}, None
+    if response.isError():
+        code = getattr(response, "exception_code", None)
+        if code is None:
+            detail = str(response) or response.__class__.__name__
+            return {"unit_id": unit_id, "status": "no_response", "detail": f"Keine Antwort: {detail}", "latency_ms": latency()}, None
+        if int(code) in (10, 11):
+            return {"unit_id": unit_id, "status": "gateway_error", "detail": f"Gateway-Exception {code}: Ziel nicht erreichbar", "latency_ms": latency()}, None
+        return {"unit_id": unit_id, "status": "exception", "detail": f"Modbus-Exception {code} – Unit antwortet", "latency_ms": latency()}, f"E{code}"
+    raw = response.bits[:1] if function in (1, 2) else response.registers[:1]
+    detail = f"Antwort · Rohwert {raw[0]}" if raw else "Gültige Modbus-Antwort"
+    return {"unit_id": unit_id, "status": "answer", "detail": detail, "latency_ms": latency()}, f"V{raw}"
+
+
 def scan_unit_ids(payload: dict[str, Any]) -> dict[str, Any]:
     target = _target(payload)
     start_id = _int(payload.get("start_id", 1), "Start-ID", 0, 247)
@@ -1129,52 +1208,33 @@ def scan_unit_ids(payload: dict[str, Any]) -> dict[str, Any]:
         raise InspectorError("Die End-ID muss grösser oder gleich der Start-ID sein.")
     function = _int(payload.get("function", 3), "Funktionscode", 1, 4)
     address = _int(payload.get("address", 0), "Testadresse", 0, 65535)
+    delay_ms = _int(payload.get("delay_ms", 0) or 0, "Pause zwischen Unit-IDs", 0, 5000)
+    # Standard: eine gemeinsame Verbindung für alle IDs; manche Gateways brauchen nach Fehlern eine neue Sitzung
+    reconnect_each = bool(payload.get("reconnect_each"))
     found: list[dict[str, Any]] = []
     attempts: list[dict[str, Any]] = []
     fingerprints: list[str] = []
     started = time.perf_counter()
     for unit_id in range(start_id, end_id + 1):
+        if unit_id != start_id and delay_ms:
+            time.sleep(delay_ms / 1000)
         unit_started = time.perf_counter()
-        client = _client(target)
         try:
-            if not client.connect():
-                latency = round((time.perf_counter() - unit_started) * 1000, 1)
-                attempts.append({"unit_id": unit_id, "status": "connection_error", "detail": "TCP-Verbindung fehlgeschlagen", "latency_ms": latency})
-                continue
-            try:
-                response = _call_read(client, function, address, 1, unit_id)
-                latency = round((time.perf_counter() - unit_started) * 1000, 1)
-                if response is None:
-                    attempts.append({"unit_id": unit_id, "status": "no_response", "detail": "Keine Modbus-Antwort", "latency_ms": latency})
-                    continue
-                if response.isError():
-                    code = getattr(response, "exception_code", None)
-                    if code is None:
-                        detail = str(response) or response.__class__.__name__
-                        attempts.append({"unit_id": unit_id, "status": "no_response", "detail": f"Keine Antwort: {detail}", "latency_ms": latency})
-                    elif int(code) in (10, 11):
-                        attempts.append({"unit_id": unit_id, "status": "gateway_error", "detail": f"Gateway-Exception {code}: Ziel nicht erreichbar", "latency_ms": latency})
-                    else:
-                        item = {"unit_id": unit_id, "status": "exception", "detail": f"Modbus-Exception {code} – Unit/Slave antwortet", "latency_ms": latency}
-                        attempts.append(item)
-                        found.append(item)
-                        fingerprints.append(f"E{code}")
-                else:
-                    raw = response.bits[:1] if function in (1, 2) else response.registers[:1]
-                    item = {"unit_id": unit_id, "status": "answer", "detail": f"Antwort · Rohwert {raw[0]}" if raw else "Gültige Modbus-Antwort", "latency_ms": latency}
-                    attempts.append(item)
-                    found.append(item)
-                    fingerprints.append(f"V{raw}")
-            except (OSError, ModbusException) as error:
-                latency = round((time.perf_counter() - unit_started) * 1000, 1)
-                detail = str(error).strip() or error.__class__.__name__
-                attempts.append({"unit_id": unit_id, "status": "timeout", "detail": f"Keine Antwort: {detail}", "latency_ms": latency})
-                continue
-        finally:
-            client.close()
+            with _shared(target, "Unit-Scan", fresh=reconnect_each) as client:
+                item, fingerprint = _probe_unit(client, function, address, unit_id, unit_started)
+        except InspectorError as error:
+            latency = round((time.perf_counter() - unit_started) * 1000, 1)
+            attempts.append({"unit_id": unit_id, "status": "connection_error", "detail": str(error), "latency_ms": latency})
+            if not reconnect_each:
+                break  # ohne Verbindung ist ein Weiterscannen sinnlos
+            continue
+        attempts.append(item)
+        if fingerprint:
+            found.append(item)
+            fingerprints.append(fingerprint)
     warning = None
     if len(found) >= 8 and len(set(fingerprints)) == 1:
-        warning = ("Viele Unit-IDs (Slave-IDs) liefern dieselbe Antwort. Das Gerät oder Gateway wertet die Unit-ID vermutlich nicht aus – "
+        warning = ("Viele Unit-IDs liefern dieselbe Antwort. Das Gerät oder Gateway wertet die Unit-ID vermutlich nicht aus – "
                    "dann ist jede ID gültig, üblich sind 1 oder 255. Für Modbus-TCP-Geräte die ID aus der Herstellerangabe verwenden.")
     elif not found:
         warning = (
@@ -1200,7 +1260,7 @@ def scan_registers(payload: dict[str, Any]) -> dict[str, Any]:
     the documented start address is valid. Probe bounded common block widths.
     """
     target = _target(payload)
-    unit_id = _int(payload.get("unit_id", 1), "Unit-ID (Slave-ID)", 0, 247)
+    unit_id = _int(payload.get("unit_id", 1), "Unit-ID", 0, 247)
     requested_function = _int(payload.get("function", 0), "Funktionsauswahl", 0, 4)
     if requested_function not in (0, 3, 4):
         raise InspectorError("Die Registersuche unterstützt FC03, FC04 oder beide.")
@@ -1229,10 +1289,7 @@ def scan_registers(payload: dict[str, Any]) -> dict[str, Any]:
     blocks: list[dict[str, int]] = []
     aborted = False
     started = time.perf_counter()
-    client = _client(target)
-    try:
-        if not client.connect():
-            raise InspectorError("Keine TCP-Verbindung zum Zielgerät.", 502)
+    with _shared(target, "Register-Finder") as client:
         consecutive_io_errors = 0
         for function in functions:
             for address in range(start_address, end_address + 1):
@@ -1320,8 +1377,6 @@ def scan_registers(payload: dict[str, Any]) -> dict[str, Any]:
                     time.sleep(delay_ms / 1000)
             if aborted:
                 break
-    finally:
-        client.close()
 
     found = sorted(found_by_key.values(), key=lambda item: (item["function"], item["address"]))
     warning = None
@@ -1365,18 +1420,20 @@ def poll_points(payload: dict[str, Any]) -> dict[str, Any]:
 
     results = []
     read_cache: dict[tuple[int, int, int, int], Any] = {}
-    client = _client(target)
-    try:
-        if not client.connect():
-            raise InspectorError("Keine TCP-Verbindung zum Zielgerät.", 502)
+    with _shared(target, "Live-Monitor") as client:
         for point in points:
             point_id = str(point.get("id", ""))
             try:
                 data_type = str(point.get("data_type", "uint16")).lower()
                 function = _int(point.get("function", 3), "Funktionscode", 1, 4)
                 address = _int(point.get("address", 0), "Registeradresse", 0, 65535)
-                unit_id = _int(point.get("unit_id", 1), "Unit-ID (Slave-ID)", 0, 247)
-                logical_count = 1 if function in (1, 2) else TYPE_COUNTS.get(data_type, 1)
+                unit_id = _int(point.get("unit_id", 1), "Unit-ID", 0, 247)
+                if function in (1, 2):
+                    logical_count = 1
+                elif data_type == "string":
+                    logical_count = _int(point.get("length", 1), "Textlänge (Register)", 1, 125)
+                else:
+                    logical_count = TYPE_COUNTS.get(data_type, 1)
                 read_start = _int(point.get("read_start", address), "Abfrage-Startadresse", 0, 65535)
                 read_count = _int(point.get("read_count", logical_count), "Abfrageanzahl", 1, 2000 if function in (1, 2) else 125)
                 value_offset = _int(point.get("value_offset", address - read_start), "Wert-Offset", 0, read_count - 1)
@@ -1418,6 +1475,140 @@ def poll_points(payload: dict[str, Any]) -> dict[str, Any]:
                 })
             except (InspectorError, OSError, ModbusException, struct.error) as error:
                 results.append({"id": point_id, "ok": False, "error": str(error)})
-    finally:
-        client.close()
     return {"ok": True, "timestamp": time.time(), "points": results}
+
+
+# --- Schreiben (FC05, FC06, FC16) ------------------------------------------------
+# Standardmässig gesperrt. Muss in der Oberfläche bewusst freigegeben werden und läuft nach 30 Minuten ab.
+
+WRITE_MODE_SECONDS = 30 * 60
+_WRITE_STATE = {"enabled_until": 0.0}
+WRITE_LOG: list[dict[str, Any]] = []
+INT_RANGES = {
+    "uint16": (0, 0xFFFF), "int16": (-0x8000, 0x7FFF),
+    "uint32": (0, 0xFFFFFFFF), "int32": (-0x80000000, 0x7FFFFFFF),
+    "uint64": (0, 0xFFFFFFFFFFFFFFFF), "int64": (-0x8000000000000000, 0x7FFFFFFFFFFFFFFF),
+}
+PACK_FORMATS = {"uint16": ">H", "int16": ">h", "float16": ">e", "uint32": ">I", "int32": ">i", "float32": ">f",
+                "uint64": ">Q", "int64": ">q", "float64": ">d"}
+
+
+def set_write_mode(enabled: bool) -> dict[str, Any]:
+    _WRITE_STATE["enabled_until"] = time.time() + WRITE_MODE_SECONDS if enabled else 0.0
+    return write_mode_status()
+
+
+def write_mode_status() -> dict[str, Any]:
+    remaining = max(0, round(_WRITE_STATE["enabled_until"] - time.time()))
+    return {"ok": True, "enabled": remaining > 0, "remaining_s": remaining}
+
+
+def _registers_for_order(data: bytes, order: str) -> list[int]:
+    """Umkehrung von _bytes_for_order: logische Big-Endian-Bytes → Registerinhalt in Gerätereihenfolge."""
+    labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[: len(data)]
+    if order not in ORDERS.get(len(data), (labels,)):
+        raise InspectorError(f"Byte-Reihenfolge {order} passt nicht zum Datentyp.")
+    base = bytearray(len(data))
+    for index, label in enumerate(order):
+        base[labels.index(label)] = data[index]
+    return [int.from_bytes(base[i:i + 2], "big") for i in range(0, len(base), 2)]
+
+
+def encode_value(value: Any, data_type: str, order: str | None = None, scale: float = 1, offset: float = 0,
+                 length: int | None = None) -> list[int]:
+    """Wert in Anzeige-Einheit → Registerinhalte (Umkehrung von Faktor/Offset und Byte-Reihenfolge)."""
+    data_type = str(data_type).lower()
+    if data_type == "string":
+        text = str(value).encode("latin-1", errors="strict")
+        size = (length or (len(text) + 1) // 2) * 2
+        if len(text) > size:
+            raise InspectorError(f"Der Text ist länger als {size} Zeichen.")
+        data = text.ljust(size, b"\x00")
+        byteorder = "little" if order == "BA" else "big"
+        return [int.from_bytes(data[i:i + 2], byteorder) for i in range(0, size, 2)]
+    if data_type not in PACK_FORMATS:
+        raise InspectorError(f"Schreiben für Datentyp {data_type} wird nicht unterstützt.")
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise InspectorError("Der Wert muss eine Zahl sein.")
+    if not scale:
+        raise InspectorError("Der Faktor darf nicht 0 sein.")
+    raw: float | int = (number - float(offset)) / float(scale)
+    if data_type in INT_RANGES:
+        raw = round(raw)
+        low, high = INT_RANGES[data_type]
+        if not low <= raw <= high:
+            raise InspectorError(f"Rohwert {raw} liegt ausserhalb von {data_type.upper()} ({low} … {high}).")
+    data = struct.pack(PACK_FORMATS[data_type], raw)
+    order = order or ORDERS[len(data)][0]
+    return _registers_for_order(data, order)
+
+
+def _call_write(client, function: int, address: int, unit_id: int, registers: list[int] | None = None, coil: bool | None = None):
+    method_name = {5: "write_coil", 6: "write_register", 16: "write_registers"}[function]
+    method = getattr(client, method_name)
+    kwargs: dict[str, Any] = {"address": address}
+    if function == 5:
+        kwargs["value"] = bool(coil)
+    elif function == 6:
+        kwargs["value"] = registers[0]
+    else:
+        kwargs["values"] = registers
+    kwargs.update(_unit_kw(method, unit_id))
+    return method(**kwargs)
+
+
+def write_value(payload: dict[str, Any]) -> dict[str, Any]:
+    """Coil (FC05) oder Holding-Register (FC06/FC16) schreiben und zur Kontrolle zurücklesen."""
+    if not write_mode_status()["enabled"]:
+        raise InspectorError("Schreiben ist gesperrt. Zuerst «Schreiben freigeben» aktivieren.", 403)
+    if payload.get("confirmed") is not True:
+        raise InspectorError("Das Schreiben muss im Dialog bestätigt werden.", 428)
+    target = _target(payload)
+    unit_id = _int(payload.get("unit_id", 1), "Unit-ID", 0, 247)
+    address = _int(payload.get("address", 0), "Registeradresse", 0, 65535)
+    read_function = _int(payload.get("function", 3), "Funktionscode", 1, 4)
+    if read_function in (2, 4):
+        raise InspectorError("Discrete Inputs (FC02) und Input Register (FC04) sind nur lesbar.")
+    data_type = str(payload.get("data_type", "uint16")).lower()
+    order = payload.get("order")
+    if read_function == 1:
+        coil = str(payload.get("value")).strip().lower() in ("1", "true", "ein", "on", "an")
+        registers, function = None, 5
+    else:
+        scale = _float(payload.get("scale", 1), "Faktor", -1_000_000, 1_000_000)
+        offset = _float(payload.get("offset", 0), "Offset", -1_000_000_000, 1_000_000_000)
+        length = _int(payload.get("length", 1), "Textlänge (Register)", 1, 123) if data_type == "string" else None
+        registers = encode_value(payload.get("value"), data_type, order, scale, offset, length)
+        function = 16 if len(registers) > 1 or payload.get("prefer_fc16") else 6
+        coil = None
+    with _shared(target, "Schreiben") as client:
+        try:
+            response = _call_write(client, function, address, unit_id, registers, coil)
+        except (OSError, ModbusException) as error:
+            raise InspectorError(f"Schreiben fehlgeschlagen: {error}", 502)
+        if response is None:
+            raise InspectorError("Das Gerät hat das Schreiben nicht bestätigt.", 504)
+        if response.isError():
+            raise InspectorError("Schreiben abgelehnt – " + exception_text(getattr(response, "exception_code", "unbekannt")), 502)
+        # Kontrolle: denselben Bereich zurücklesen
+        count = 1 if function == 5 else len(registers)
+        readback = _call_read(client, read_function, address, count, unit_id)
+    verified = None
+    readback_raw = None
+    if readback is not None and not readback.isError():
+        if function == 5:
+            readback_raw = [bool(readback.bits[0])]
+            verified = readback_raw[0] == coil
+        else:
+            readback_raw = [int(item) for item in readback.registers[:count]]
+            verified = readback_raw == registers
+    entry = {
+        "time": time.time(), "connection": f"{target.host}:{target.port}", "unit_id": unit_id, "address": address,
+        "function": f"FC{function:02d}", "value": payload.get("value"), "data_type": data_type,
+        "registers": registers if registers is not None else [coil], "verified": verified,
+    }
+    WRITE_LOG.append(entry)
+    del WRITE_LOG[:-200]
+    return {"ok": True, **entry, "readback": readback_raw}
