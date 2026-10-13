@@ -1,0 +1,33 @@
+{
+  "schema": "hbtec-device-catalog-entry",
+  "schema_version": 1,
+  "manufacturer": "Carlo Gavazzi",
+  "model": "EM340 (EM300-Serie, Modbus RTU)",
+  "device_type": "energiezaehler",
+  "aliases": "EM340DINAV23XS1X, EM340DINAV23XS1PFA, EM340DINAV23XS1PFB, EM340, EM330, ET340 (gleiche Registerkarte EM300/ET300)",
+  "notes": "RTU-Werkseinstellungen laut Protokoll (Serial port configuration menu): Adresse 1, 9600 bit/s, keine Paritaet, 1 Stoppbit (8N1). Optionen: 9,6/19,2/38,4/57,6/115,2 kbit/s, Paritaet none/even (bei even fix 1 Stoppbit). Aenderung am Geraet im Programmiermenue (Joystick, Menue Kommunikation) oder per FC06 auf Register 2000h (Adresse), 2001h (Baud), 2002h (Paritaet), 2003h (Stoppbits). FC03 und FC04 liefern identische Werte. Die 'Physical address' im Handbuch ist bereits die 0-basierte Protokolladresse (= Modicom 3xxxxx minus 300001) und wird hier direkt verwendet. Max. 50 Register pro Anfrage (Register 2004h). INT32-Werte: Byte-Reihenfolge im Wort MSB->LSB, Wortreihenfolge LSW->MSW = CDAB. Value weights: Spannung x10, Strom x1000, Leistung x10 (W), PF x1000, Frequenz x10, Energie x10 (kWh). PFA-Variante ('easy connection'): kWh zaehlt immer, kein Export (kWh(-) = 0, P immer positiv). PFB/X mit Messart B: bidirektional mit kWh(+) und kWh(-).",
+  "source_url": "https://www.gavazziautomation.com/fileadmin/images/PIM/OTHERSTUFF/COMPRO/EM330_EM340_ET330_ET340_CP.pdf",
+  "source_note": "Carlo Gavazzi 'EM300 Series and ET300 Series COMMUNICATION PROTOCOL' Version 2 Revision 17 (05.07.2021), Tabelle 2.4-1 und 2.9.7 (Hersteller-PDF)",
+  "verified": false,
+  "points": [
+    {"name": "Spannung L1-N", "quantity_kind": "voltage", "function": 4, "address": 0, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L2-N", "quantity_kind": "voltage", "function": 4, "address": 2, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L3-N", "quantity_kind": "voltage", "function": 4, "address": 4, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "V", "confidence": "hoch"},
+    {"name": "Strom L1", "quantity_kind": "current", "function": 4, "address": 12, "data_type": "int32", "order": "CDAB", "scale": 0.001, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L2", "quantity_kind": "current", "function": 4, "address": 14, "data_type": "int32", "order": "CDAB", "scale": 0.001, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L3", "quantity_kind": "current", "function": 4, "address": 16, "data_type": "int32", "order": "CDAB", "scale": 0.001, "unit": "A", "confidence": "hoch"},
+    {"name": "Wirkleistung L1", "quantity_kind": "power", "function": 4, "address": 18, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L2", "quantity_kind": "power", "function": 4, "address": 20, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L3", "quantity_kind": "power", "function": 4, "address": 22, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Wirkleistung", "quantity_kind": "power", "function": 4, "address": 40, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Scheinleistung", "quantity_kind": "other", "function": 4, "address": 42, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "VA", "confidence": "hoch"},
+    {"name": "Gesamt-Blindleistung", "quantity_kind": "other", "function": 4, "address": 44, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "VAr", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L1", "quantity_kind": "other", "function": 4, "address": 46, "data_type": "int16", "order": "AB", "scale": 0.001, "unit": "", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L2", "quantity_kind": "other", "function": 4, "address": 47, "data_type": "int16", "order": "AB", "scale": 0.001, "unit": "", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L3", "quantity_kind": "other", "function": 4, "address": 48, "data_type": "int16", "order": "AB", "scale": 0.001, "unit": "", "confidence": "hoch"},
+    {"name": "Gesamt-Leistungsfaktor", "quantity_kind": "other", "function": 4, "address": 49, "data_type": "int16", "order": "AB", "scale": 0.001, "unit": "", "confidence": "hoch"},
+    {"name": "Netzfrequenz", "quantity_kind": "frequency", "function": 4, "address": 51, "data_type": "int16", "order": "AB", "scale": 0.1, "unit": "Hz", "confidence": "hoch"},
+    {"name": "Wirkenergie Bezug (Import) kWh(+) TOT", "quantity_kind": "energy", "function": 4, "address": 52, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Einspeisung (Export) kWh(-) TOT", "quantity_kind": "energy", "function": 4, "address": 78, "data_type": "int32", "order": "CDAB", "scale": 0.1, "unit": "kWh", "confidence": "hoch"}
+  ]
+}

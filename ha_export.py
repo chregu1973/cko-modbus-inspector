@@ -19,6 +19,7 @@ SWAP = {
 }
 REGISTER_TYPES = {3: "holding", 4: "input"}
 BIT_TYPES = {1: "coil", 2: "discrete_input"}
+SERIAL_FORMATS = {"8N1": (8, "N", 1), "8E1": (8, "E", 1), "8O1": (8, "O", 1), "8N2": (8, "N", 2)}
 HA_DATA_TYPES = {"uint16", "int16", "float16", "uint32", "int32", "float32", "uint64", "int64", "float64", "string"}
 
 
@@ -53,22 +54,46 @@ def build_yaml(points: list[dict[str, Any]], connection: dict[str, Any], hub_nam
                scan_interval: int = 15) -> str:
     if not points:
         raise ValueError("Keine Datenpunkte für den Export vorhanden.")
-    host = str(connection.get("host", "")).strip()
-    if not host:
-        raise ValueError("Für den Export fehlt die IP-Adresse des Geräts.")
-    hub = hub_name.strip() or f"Modbus {host}"
-    transport = "rtuovertcp" if connection.get("transport") == "rtu_tcp" else "tcp"
     timeout = max(1, round(int(connection.get("timeout_ms", 3000)) / 1000))
-    lines = [
+    header = [
         "# Erzeugt mit dem CKO Modbus Inspector – geprüfte Datenpunkte für die Home-Assistant-Integration «Modbus».",
         "# In configuration.yaml einfügen (oder per !include). device_address = Unit-ID (ältere Versionen: slave).",
         "modbus:",
-        f"  - name: {_quote(hub)}",
-        f"    type: {transport}",
-        f"    host: {_quote(host)}",
-        f"    port: {int(connection.get('port', 502))}",
-        f"    timeout: {timeout}",
     ]
+    if connection.get("transport") == "rtu_serial":
+        port_name = str(connection.get("serial_port", "")).strip()
+        if not port_name:
+            raise ValueError("Für den Export fehlt die serielle Schnittstelle.")
+        data_format = str(connection.get("data_format", "8N1")).upper()
+        if data_format not in SERIAL_FORMATS:
+            raise ValueError("Unbekanntes Datenformat der seriellen Verbindung.")
+        bytesize, parity, stopbits = SERIAL_FORMATS[data_format]
+        hub = hub_name.strip() or f"Modbus RTU {port_name}"
+        lines = header + [
+            f"  - name: {_quote(hub)}",
+            "    type: serial",
+            "    method: rtu",
+            "    # Am Home-Assistant-Rechner heisst die Schnittstelle meist /dev/ttyUSB0 oder /dev/serial/by-id/…",
+            f"    port: {_quote(port_name)}",
+            f"    baudrate: {int(connection.get('baudrate', 9600))}",
+            f"    bytesize: {bytesize}",
+            f"    parity: {parity}",
+            f"    stopbits: {stopbits}",
+            f"    timeout: {timeout}",
+        ]
+    else:
+        host = str(connection.get("host", "")).strip()
+        if not host:
+            raise ValueError("Für den Export fehlt die IP-Adresse des Geräts.")
+        hub = hub_name.strip() or f"Modbus {host}"
+        transport = "rtuovertcp" if connection.get("transport") == "rtu_tcp" else "tcp"
+        lines = header + [
+            f"  - name: {_quote(hub)}",
+            f"    type: {transport}",
+            f"    host: {_quote(host)}",
+            f"    port: {int(connection.get('port', 502))}",
+            f"    timeout: {timeout}",
+        ]
     wait_ms = int(connection.get("wait_ms", 0) or 0)
     if wait_ms:
         lines.append(f"    message_wait_milliseconds: {wait_ms}")

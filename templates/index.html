@@ -159,23 +159,60 @@
 
       <section class="tab-page" id="tab-connection">
         <div class="page-heading">
-          <div><span class="eyebrow">SCHRITT 03</span><h2>Modbus-Ziel verbinden</h2><p>Das gefundene Gerät übernehmen und den TCP-Zugang prüfen.</p></div>
+          <div><span class="eyebrow">SCHRITT 03</span><h2>Modbus-Ziel verbinden</h2><p>Gerät im Netz (TCP) übernehmen – oder einen RS485-Zähler direkt über einen USB-RS485-Adapter am PC anschliessen.</p></div>
         </div>
         <div class="grid">
           <article class="card glass">
-            <div class="card-head"><div><span class="icon">↔</span><h3 id="transportTitle">Modbus TCP</h3></div><span class="chip">Port 502</span></div>
+            <div class="card-head"><div><span class="icon">↔</span><h3 id="transportTitle">Modbus TCP</h3></div><span id="transportChip" class="chip">Port 502</span></div>
             <div class="form-grid">
-              <label class="span-2">Übertragungsart<select id="transport"><option value="tcp">Modbus TCP – echtes TCP-Gerät / Protokoll-Gateway</option><option value="rtu_tcp">Modbus RTU über TCP – transparenter Seriell-Server</option></select></label>
-              <label class="span-2">IP-Adresse oder Hostname<input id="host" value="192.168.1.100" spellcheck="false"></label>
-              <label>Port<input id="port" type="number" value="502" min="1" max="65535"></label>
+              <label class="span-2">Übertragungsart<select id="transport"><option value="tcp">Modbus TCP – echtes TCP-Gerät / Protokoll-Gateway</option><option value="rtu_tcp">Modbus RTU über TCP – transparenter Seriell-Server</option><option value="rtu_serial">Modbus RTU über USB – RS485-Adapter direkt am PC</option></select></label>
+              <label class="span-2 tcp-only">IP-Adresse oder Hostname<input id="host" value="192.168.1.100" spellcheck="false"></label>
+              <label class="tcp-only">Port<input id="port" type="number" value="502" min="1" max="65535"></label>
+              <div class="span-2 serial-only field-block"><span class="field-label">Schnittstelle (COM-Port des Adapters)</span><div class="inline-field"><select id="serialPort" aria-label="Schnittstelle"></select><button id="serialRefreshBtn" class="secondary small" type="button" title="Liste neu laden, z. B. nach dem Einstecken des Adapters">↻ Neu laden</button></div><small id="serialPortNote" class="field-note">Adapter einstecken – die Liste zeigt USB-Adapter zuerst.</small></div>
+              <label class="serial-only">Baudrate<select id="baudrate"><option>1200</option><option>2400</option><option>4800</option><option selected>9600</option><option>14400</option><option>19200</option><option>38400</option><option>57600</option><option>115200</option></select></label>
+              <label class="serial-only">Datenformat<select id="dataFormat"><option value="8N1">8N1 – keine Parität</option><option value="8E1">8E1 – gerade Parität (even)</option><option value="8O1">8O1 – ungerade Parität (odd)</option><option value="8N2">8N2 – keine Parität, 2 Stoppbits</option></select></label>
               <label>Timeout (ms)<input id="timeout" type="number" value="800" min="50" max="10000"></label>
               <label class="span-2">Pause zwischen Anfragen (ms)<input id="waitMs" type="number" value="0" min="0" max="2000" step="10"><small class="field-note">Für langsame Geräte und Gateways, z. B. 30–100 ms. Entspricht <code>message_wait_milliseconds</code> in Home Assistant.</small></label>
             </div>
             <button id="connectBtn" class="primary wide"><span>Verbindung prüfen</span><i>→</i></button>
             <div id="connectResult" class="result-box muted">Noch keine Verbindung geprüft.</div>
             <div id="transportWarning" class="alert warning hidden">Ein transparenter Seriell-Server koordiniert mehrere Modbus-Master nicht. Nur in einem sicheren Wartungsfenster testen, wenn die reguläre Abfrage pausiert ist.</div>
+            <div class="alert warning serial-only">Am RS485-Bus darf nur <b>ein</b> Master abfragen. Ist bereits ein KNX-Modbus-Gateway, eine SPS oder ein Energiemanager angeschlossen, diesen für die Prüfung abklemmen oder abschalten.</div>
+          </article>
+          <article class="card glass serial-only rtu-wiring-card">
+            <div class="card-head"><div><span class="icon">⚡</span><h3>Anschluss in 4 Punkten</h3></div><button id="rtuGuideBtn" class="secondary small" type="button">Bebilderte Anleitung</button></div>
+            <img class="rtu-wiring-image" src="{{ url_for('static', filename='help/rtu-wiring.svg') }}?v={{ app_version }}" alt="Verdrahtung USB-RS485-Adapter mit Zähler: A an A, B an B, GND an GND, 120-Ohm-Abschluss am Leitungsende">
+            <ol class="rtu-checklist">
+              <li><b>A</b> (auch D+, Data+) an A, <b>B</b> (D−, Data−) an B – Bezeichnungen der Hersteller sind nicht einheitlich.</li>
+              <li><b>GND</b> des Adapters mit dem Bezugspotenzial (GND/COM) des Zählers verbinden, falls vorhanden.</li>
+              <li><b>120 Ω</b> Abschluss an beiden Leitungsenden; bei einem kurzen Prüfkabel genügt meist der Adapter.</li>
+              <li>Baudrate, Format und Adresse unbekannt? Unten <b>«Einstellungen automatisch suchen»</b>.</li>
+            </ol>
           </article>
         </div>
+        <article class="card glass serial-only rtu-search-card">
+          <div class="card-head"><div><span class="icon">⌕</span><h3>Einstellungen automatisch suchen</h3></div><span class="chip">Baudrate · Format · Unit-ID</span></div>
+          <p class="field-note">Probiert die üblichen Kombinationen aus Baudrate und Datenformat durch und zeigt, unter welcher Unit-ID (Zähleradresse) ein Gerät antwortet. Der erste Treffer wird automatisch übernommen.</p>
+          <div class="form-grid rtu-search-grid">
+            <label>Suchumfang<select id="rtuScope"><option value="quick">Schnell – 9600, 19200, 38400 Baud</option><option value="full">Vollständig – alle Baudraten</option><option value="current">Nur gewählte Baudrate, alle Formate</option></select></label>
+            <label>Unit-ID von<input id="rtuIdStart" type="number" value="1" min="1" max="247"></label>
+            <label>bis<input id="rtuIdEnd" type="number" value="10" min="1" max="247"></label>
+            <label>Test-Funktion<select id="rtuFunction"><option value="3">FC03 Holding</option><option value="4">FC04 Input</option></select></label>
+            <label class="check-label" title="Alle Zähler an einem Bus haben dieselbe Baudrate – nach der ersten passenden Einstellung werden nur noch deren Unit-IDs fertig geprüft."><input id="rtuStopFirst" type="checkbox" checked> Nach erstem Treffer stoppen</label>
+            <button id="rtuSearchBtn" class="primary align-end" type="button"><span>Suche starten</span><i>⌕</i></button>
+          </div>
+          <div id="rtuEstimate" class="hint"></div>
+          <div id="rtuProgress" class="scan-progress hidden" aria-live="polite">
+            <div class="progress-head">
+              <div><strong id="rtuProgressTitle">Suche läuft</strong><span id="rtuProgressText">Wird vorbereitet …</span></div>
+              <button id="rtuCancelBtn" class="secondary" type="button">Abbrechen</button>
+            </div>
+            <div class="progress-track"><div id="rtuProgressBar" class="progress-fill"></div></div>
+            <div class="progress-meta"><span id="rtuProgressPercent">0 %</span><span id="rtuProgressCombos">0 Einstellungen</span><span id="rtuProgressHits">0 Treffer</span><span id="rtuProgressTime">0 s</span></div>
+          </div>
+          <div id="rtuSummary" class="hidden"></div>
+          <div class="table-wrap"><table><thead><tr><th>Baudrate</th><th>Datenformat</th><th>Unit-ID</th><th>Antwort</th><th>Antwortzeit</th><th></th></tr></thead><tbody id="rtuResults"><tr class="empty"><td colspan="6">Noch keine Suche ausgeführt.</td></tr></tbody></table></div>
+        </article>
         <article class="card glass compact info-card">
           <span class="info-symbol">i</span>
           <div><strong>Sicherer Start</strong><p>Gelesen wird mit FC01–FC04. Schreiben (FC05/FC06/FC16) ist gesperrt und muss oben über «Nur Lesen» bewusst für 30 Minuten freigegeben werden – jeder Schreibvorgang wird vorher angezeigt, bestätigt und zurückgelesen.</p></div>
@@ -320,7 +357,7 @@
       <section class="tab-page" id="tab-monitor">
         <div class="page-heading monitor-heading">
           <div><span class="eyebrow">SCHRITT 07</span><h2>Live-Monitor & Geräteprofil</h2><p>Geprüfte Datenpunkte sammeln, beobachten und in der Profilbibliothek sichern.</p></div>
-          <div class="button-row"><button id="importBtn" class="secondary">Profil-Datei importieren</button><button id="haExportBtn" class="secondary" title="Datenpunkte als YAML für die Home-Assistant-Integration «Modbus»">Home Assistant (YAML)</button><button id="csvExportBtn" class="secondary">Visu-CSV exportieren</button><button id="exportBtn" class="secondary">.hbmodbus exportieren</button><input id="importFile" type="file" accept=".hbmodbus,.json" hidden></div>
+          <div class="button-row"><button id="importBtn" class="secondary">Profil-Datei importieren</button><button id="haExportBtn" class="secondary" title="Datenpunkte als YAML für die Home-Assistant-Integration «Modbus»">Home Assistant (YAML)</button><button id="meterListBtn" class="secondary" title="Zählerliste mit KNX-DPT-Vorschlag und Plausibilitätshinweisen – als CSV oder Druck/PDF">Zählerliste</button><button id="csvExportBtn" class="secondary">Visu-CSV exportieren</button><button id="exportBtn" class="secondary">.hbmodbus exportieren</button><input id="importFile" type="file" accept=".hbmodbus,.json" hidden></div>
         </div>
         <article class="card glass profile-card">
           <div class="form-grid profile-grid">
@@ -380,6 +417,15 @@
       <div class="help-nav"><button id="helpPrevBtn" class="secondary" type="button">← Zurück</button><div id="helpDots" class="help-dots"></div><button id="helpNextBtn" class="primary" type="button">Weiter →</button></div>
     </div>
   </dialog>
+  <dialog id="meterListDialog" class="meter-list-dialog">
+    <div class="dialog-card glass">
+      <div class="dialog-head"><div><span class="eyebrow">ÜBERGABE</span><h3>Zählerliste</h3></div><button id="meterListCloseBtn" class="icon-button" type="button" title="Schliessen">×</button></div>
+      <p class="field-note">Alle Datenpunkte mit Verbindung, Register, Skalierung, letztem Live-Wert und einem Vorschlag für den KNX-Datenpunkttyp (DPT) – als Vorlage für das KNX-Modbus-Gateway, Node-RED oder die Visualisierung. Gruppenadresse und Raum lassen sich in der CSV-Datei ergänzen.</p>
+      <div id="meterListSummary" class="hidden"></div>
+      <div class="table-wrap"><table class="meter-list-table"><thead><tr><th>Bezeichnung</th><th>Unit-ID</th><th>Register</th><th>Datentyp</th><th>Faktor</th><th>Letzter Wert</th><th>KNX-DPT</th><th>Prüfen</th></tr></thead><tbody id="meterListRows"></tbody></table></div>
+      <div class="dialog-actions"><button id="meterListCloseBtn2" class="secondary" type="button">Schliessen</button><button id="meterListPrintBtn" class="secondary" type="button">Drucken / PDF</button><button id="meterListCsvBtn" class="primary" type="button">CSV herunterladen</button></div>
+    </div>
+  </dialog>
   <dialog id="writeDialog">
     <form method="dialog" class="dialog-card glass" id="writeForm">
       <div class="dialog-head"><div><span class="eyebrow write-eyebrow">SCHREIBEN</span><h3>Wert schreiben</h3></div><button value="cancel" class="icon-button" title="Abbrechen">×</button></div>
@@ -421,5 +467,6 @@
   <script src="{{ url_for('static', filename='connection-write.js') }}?v={{ app_version }}"></script>
   <script src="{{ url_for('static', filename='sunspec.js') }}?v={{ app_version }}"></script>
   <script src="{{ url_for('static', filename='help.js') }}?v={{ app_version }}"></script>
+  <script src="{{ url_for('static', filename='rtu.js') }}?v={{ app_version }}"></script>
 </body>
 </html>

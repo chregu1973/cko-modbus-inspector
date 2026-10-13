@@ -1,6 +1,6 @@
 # CKO Modbus Inspector
 
-Lokales Inbetriebnahme- und Diagnosewerkzeug für Modbus TCP sowie Modbus RTU über TCP. Die MVP-Version scannt lokale Netze, sucht Unit-IDs, liest FC01–FC04, zeigt Registerwerte gleichzeitig in allen üblichen Byte-/Word-Reihenfolgen und sammelt geprüfte Datenpunkte in wiederverwendbaren Geräteprofilen.
+Lokales Inbetriebnahme- und Diagnosewerkzeug für Modbus TCP, Modbus RTU über TCP und Modbus RTU direkt über einen USB-RS485-Adapter. Die MVP-Version scannt lokale Netze, sucht Unit-IDs, liest FC01–FC04, zeigt Registerwerte gleichzeitig in allen üblichen Byte-/Word-Reihenfolgen und sammelt geprüfte Datenpunkte in wiederverwendbaren Geräteprofilen.
 
 ## Sicherheitsprinzip
 
@@ -35,7 +35,7 @@ Für Entwicklung und Linux: Python 3.10+ installieren, dann `start-windows.bat` 
 2. Ein vorhandenes Profil öffnen oder sein Gerätewissen für ein neues Projekt übernehmen. Falls das Gerät noch unbekannt ist, ein neues Profil mit Produktname, Hersteller und Modell beginnen.
 3. Unter **Netzwerk-Scan** Geräte mit geöffnetem Port 502 finden. VPN-Zielnetze können als CIDR manuell eingetragen werden.
 4. Den gewünschten Treffer übernehmen und unter **Verbindung** den TCP-Zugang prüfen.
-5. Die Übertragungsart wählen: **Modbus TCP** für echte TCP-Geräte/Protokoll-Gateways oder **Modbus RTU über TCP** für transparente Seriell-Server.
+5. Die Übertragungsart wählen: **Modbus TCP** für echte TCP-Geräte/Protokoll-Gateways, **Modbus RTU über TCP** für transparente Seriell-Server oder **Modbus RTU über USB** für RS485-Zähler direkt am Laptop (USB-RS485-Adapter). Bei RTU über USB findet **«Einstellungen automatisch suchen»** Baudrate, Datenformat und Unit-ID.
 6. Hinter einem Gateway unter **Unit-IDs** die Teilnehmer suchen. Auch eine Modbus-Exception 2 bestätigt, dass die Unit antwortet; nur die Testadresse ist dann ungültig.
 7. Wenn die Registeradressen unbekannt sind, unter **Register-Finder** einen Bereich mit FC03, FC04 oder beiden durchsuchen.
 8. Optional eine Referenz speichern, am Gerät gezielt einen Zustand ändern und erneut scannen. Veränderte Register werden hervorgehoben.
@@ -295,6 +295,16 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 - Import von Loxone-Modbus-Vorlagen (.xml): selbst heruntergeladene Vorlagen werden lokal ins Nachschlagewerk übernommen (Datentyp, Reihenfolge, Skalierung, Einheit). Die Vorlagen der Loxone Library haben keine offene Lizenz und werden deshalb nicht mitgeliefert.
 - Bebilderte Kurzanleitung «So geht's» (Seitenleiste, öffnet sich beim ersten Start einmal) mit zehn Schritten und Screenshots.
 
+## Änderungen in 0.5.0
+
+- Modbus RTU direkt über USB-RS485-Adapter: COM-Port-Auswahl (USB-Adapter zuerst, mit Chip-Erkennung FTDI/CH340/CP210x), Baudrate und Datenformat (8N1, 8E1, 8O1, 8N2). Alle Funktionen – Unit-IDs, Register-Finder, Decoder, Live-Monitor, Schreiben, SunSpec – laufen auch seriell.
+- «Einstellungen automatisch suchen»: probiert Baudraten und Datenformate für einen Unit-ID-Bereich durch, zeigt Fortschritt, lässt sich abbrechen und übernimmt den ersten Treffer automatisch.
+- Eigene bebilderte Anleitung «RTU-Inbetriebnahme»: Ausrüstung, Verdrahtung, Bus-Aufbau, COM-Port, automatische Suche, Werte prüfen, Zählerliste und Fehlersuche.
+- Zählerliste: alle Datenpunkte mit Verbindung, Register, Skalierung, letztem Wert und KNX-DPT-Vorschlag – als CSV (mit Spalten für Gruppenadresse und Raum) oder zum Drucken/als PDF.
+- Plausibilitätshinweise im Live-Monitor (z. B. Spannung ohne Faktor, negativer Zählerstand, Leistungsfaktor > 1, negative Leistung bei Verbrauchern).
+- Home-Assistant-Export auch für serielle Verbindungen (`type: serial`).
+- Weitere Energiezähler im Nachschlagewerk (Herstellerangaben, siehe Quelle je Eintrag).
+
 ## Datenquellen und Lizenzen
 
 - SunSpec-Modelle: SunSpec Alliance, Apache-2.0 – `data/SUNSPEC-LICENSE.txt`
@@ -303,5 +313,5 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 ## Open Source
 
 Dieses Projekt steht unter GPL-3.0 (siehe `LICENSE`). Es nutzt unter anderem
-[Flask](https://github.com/pallets/flask), [pymodbus](https://github.com/pymodbus-dev/pymodbus)
-und [psutil](https://github.com/giampaolo/psutil).
+[Flask](https://github.com/pallets/flask), [pymodbus](https://github.com/pymodbus-dev/pymodbus),
+[pyserial](https://github.com/pyserial/pyserial) und [psutil](https://github.com/giampaolo/psutil).

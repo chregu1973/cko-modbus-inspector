@@ -42,6 +42,13 @@ class _Entry:
     settings: tuple = ()
 
 
+def _label(target: Any) -> str:
+    label = getattr(target, "label", None)
+    if isinstance(label, str) and label:
+        return label
+    return f"{target.host}:{target.port} · {'RTU über TCP' if target.transport == 'rtu_tcp' else 'Modbus TCP'}"
+
+
 class ConnectionPool:
     def __init__(self, factory: Callable[[Any], Any], clock: Callable[[], float] = time.monotonic):
         self._factory = factory
@@ -51,6 +58,7 @@ class ConnectionPool:
 
     @staticmethod
     def key_for(target: Any) -> tuple:
+        # RTU über USB: eine Verbindung pro COM-Port, unabhängig von Baudrate und Format
         return (target.host, target.port, target.transport)
 
     def _entry(self, target: Any) -> _Entry:
@@ -58,8 +66,7 @@ class ConnectionPool:
         with self._guard:
             entry = self._entries.get(key)
             if entry is None:
-                label = f"{target.host}:{target.port} · {'RTU über TCP' if target.transport == 'rtu_tcp' else 'Modbus TCP'}"
-                entry = self._entries[key] = _Entry(key=key, label=label)
+                entry = self._entries[key] = _Entry(key=key, label=_label(target))
             return entry
 
     def _close(self, entry: _Entry) -> None:
@@ -97,10 +104,11 @@ class ConnectionPool:
         with entry.lock:
             now = self._clock()
             entry.users[user] = now
-            settings = (getattr(target, "timeout", None),)
+            settings = getattr(target, "settings", None) or (getattr(target, "timeout", None),)
             if fresh or (entry.client is not None and entry.settings != settings):
                 self._close(entry)  # neu aufbauen statt zweite Sitzung zu öffnen
             entry.settings = settings
+            entry.label = _label(target)
             if entry.client is None:
                 if now < entry.next_attempt:
                     wait = int(entry.next_attempt - now + 0.999)
@@ -115,7 +123,11 @@ class ConnectionPool:
                     entry.failed_connects += 1
                     step = BACKOFF_STEPS[min(entry.failed_connects - 1, len(BACKOFF_STEPS) - 1)]
                     entry.next_attempt = now + step
+                    serial = getattr(target, "transport", "") == "rtu_serial"
                     entry.last_error = (
+                        "Schnittstelle lässt sich nicht öffnen. Ist der USB-RS485-Adapter eingesteckt und der COM-Port richtig? "
+                        "Belegt ein anderes Programm (z. B. Hersteller-Software) den Port, dieses zuerst schliessen."
+                        if serial else
                         "Verbindung abgelehnt oder nicht erreichbar. Nimmt das Gerät keine weitere Sitzung an, "
                         "laufen evtl. Home Assistant, Node-RED oder die Visu parallel – kurz stoppen und erneut versuchen."
                     )
@@ -124,7 +136,8 @@ class ConnectionPool:
                         client.close()
                     except Exception:  # noqa: BLE001
                         pass
-                    raise ConnectionUnavailable(f"Keine TCP-Verbindung zu {entry.label}. {entry.last_error}")
+                    kind = "Keine Verbindung über" if serial else "Keine TCP-Verbindung zu"
+                    raise ConnectionUnavailable(f"{kind} {entry.label}. {entry.last_error}")
                 entry.client, entry.connected_since = client, now
                 entry.connects += 1
                 entry.failed_connects, entry.next_attempt = 0, 0.0
@@ -161,9 +174,11 @@ class ConnectionPool:
         return rows
 
 
-def _is_connection_error(error: Exception) -> bool:
-    # pymodbus: ConnectionException / ModbusIOException (Timeout) – ohne harte Abhängigkeit vom Paket
-    return isinstance(error, OSError) or type(error).__name__ in {"ConnectionException", "ModbusIOException"}
+def _is_connection_error(error: Exception, serial: bool = False) -> bool:
+    # pymodbus: ConnectionException / ModbusIOException (Timeout) – ohne harte Abhängigkeit vom Paket.
+    # Seriell heisst ein Timeout nur «diese Unit-ID antwortet nicht»; der COM-Port bleibt offen.
+    names = {"ConnectionException"} if serial else {"ConnectionException", "ModbusIOException"}
+    return isinstance(error, OSError) or type(error).__name__ in names
 
 
 class _Handle:
@@ -189,7 +204,7 @@ class _Handle:
         except Exception as error:
             entry.errors += 1
             entry.last_error_at = self._pool._clock()
-            if _is_connection_error(error):
+            if _is_connection_error(error, serial=entry.key[2] == "rtu_serial"):
                 entry.last_error = f"Verbindung unterbrochen oder keine Antwort: {error}"
                 self._pool._close(entry)  # beim nächsten Bedarf neu verbinden
             else:

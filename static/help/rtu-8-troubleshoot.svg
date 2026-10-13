@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" font-family="Segoe UI, Inter, Arial, sans-serif">
+  <title>Fehlersuche bei Modbus RTU</title>
+  <rect width="1200" height="600" fill="#ffffff"/>
+  <text x="40" y="52" font-size="26" font-weight="700" fill="#101b3d">Fehlersuche – die häufigsten Ursachen</text>
+  <text x="40" y="84" font-size="16" fill="#5b6b82">Von oben nach unten prüfen – die meisten Fälle lösen sich in den ersten beiden Zeilen</text>
+
+  <g font-size="15">
+    <g transform="translate(40,112)">
+      <rect width="1120" height="104" rx="12" fill="#f4f8fd" stroke="#dfe7f1" stroke-width="2"/>
+      <rect x="0" y="0" width="300" height="104" rx="12" fill="#101b3d"/>
+      <text x="22" y="44" font-size="18" font-weight="700" fill="#fff">Keine Antwort</text>
+      <text x="22" y="72" font-size="14" fill="#a9ccef">Suche findet nichts</text>
+      <text x="330" y="36" fill="#101b3d"><tspan font-weight="700">1.</tspan> A und B tauschen und erneut suchen (häufigste Ursache)</text>
+      <text x="330" y="62" fill="#101b3d"><tspan font-weight="700">2.</tspan> Gateway, SPS oder Energiemanager am Bus abklemmen – nur ein Master</text>
+      <text x="330" y="88" fill="#101b3d"><tspan font-weight="700">3.</tspan> ID-Bereich vergrössern, Suchumfang «Vollständig», richtigen COM-Port wählen</text>
+    </g>
+    <g transform="translate(40,232)">
+      <rect width="1120" height="104" rx="12" fill="#f4f8fd" stroke="#dfe7f1" stroke-width="2"/>
+      <rect x="0" y="0" width="300" height="104" rx="12" fill="#0a84c6"/>
+      <text x="22" y="44" font-size="18" font-weight="700" fill="#fff">Antwort nur ab und zu</text>
+      <text x="22" y="72" font-size="14" fill="#e3f2fb">Timeouts, CRC-Fehler</text>
+      <text x="330" y="36" fill="#101b3d"><tspan font-weight="700">1.</tspan> Abschluss 120 Ω an beiden Enden prüfen, nicht an jedem Zähler</text>
+      <text x="330" y="62" fill="#101b3d"><tspan font-weight="700">2.</tspan> In Schritt 03 «Pause zwischen Anfragen» auf 50–100 ms, Timeout auf 1000 ms</text>
+      <text x="330" y="88" fill="#101b3d"><tspan font-weight="700">3.</tspan> GND verbinden, Leitung verdrillt und abgeschirmt, Abstand zu Lastkabeln</text>
+    </g>
+    <g transform="translate(40,352)">
+      <rect width="1120" height="104" rx="12" fill="#f4f8fd" stroke="#dfe7f1" stroke-width="2"/>
+      <rect x="0" y="0" width="300" height="104" rx="12" fill="#6b7a90"/>
+      <text x="22" y="44" font-size="18" font-weight="700" fill="#fff">COM-Port geht nicht auf</text>
+      <text x="22" y="72" font-size="14" fill="#eef2f7">«lässt sich nicht öffnen»</text>
+      <text x="330" y="36" fill="#101b3d"><tspan font-weight="700">1.</tspan> Andere Programme schliessen (Hersteller-Software, Terminal, zweiter Inspector)</text>
+      <text x="330" y="62" fill="#101b3d"><tspan font-weight="700">2.</tspan> Adapter aus- und einstecken, «↻ Neu laden»</text>
+      <text x="330" y="88" fill="#101b3d"><tspan font-weight="700">3.</tspan> Gelbes Warnzeichen im Gerätemanager: Treiber (CH340/CP210x) installieren</text>
+    </g>
+    <g transform="translate(40,472)">
+      <rect width="1120" height="104" rx="12" fill="#f4f8fd" stroke="#dfe7f1" stroke-width="2"/>
+      <rect x="0" y="0" width="300" height="104" rx="12" fill="#e08a00"/>
+      <text x="22" y="44" font-size="18" font-weight="700" fill="#fff">Werte unplausibel</text>
+      <text x="22" y="72" font-size="14" fill="#fff4e0">⚠ im Live-Monitor</text>
+      <text x="330" y="36" fill="#101b3d"><tspan font-weight="700">1.</tspan> Faktor prüfen (z. B. 0,1 · 0,01) – Wert mit der Anzeige am Zähler vergleichen</text>
+      <text x="330" y="62" fill="#101b3d"><tspan font-weight="700">2.</tspan> Datentyp und Byte-Reihenfolge im Decoder prüfen (ABCD / CDAB)</text>
+      <text x="330" y="88" fill="#101b3d"><tspan font-weight="700">3.</tspan> Negative Leistung bei Verbraucher: Wandler-Richtung oder Phasenzuordnung</text>
+    </g>
+  </g>
+</svg>

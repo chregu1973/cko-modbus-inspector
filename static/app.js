@@ -26,7 +26,18 @@ const els = {
 };
 
 function connection() {
-  return { host: els.host.value.trim(), port: Number(els.port.value), timeout_ms: Number(els.timeout.value), transport: els.transport.value, wait_ms: Number($('#waitMs')?.value) || 0 };
+  const base = { timeout_ms: Number(els.timeout.value), transport: els.transport.value, wait_ms: Number($('#waitMs')?.value) || 0 };
+  if (base.transport === 'rtu_serial') {
+    const serialPort = $('#serialPort')?.value || '';
+    return { ...base, host: serialPort, port: 0, serial_port: serialPort, baudrate: Number($('#baudrate').value), data_format: $('#dataFormat').value };
+  }
+  return { ...base, host: els.host.value.trim(), port: Number(els.port.value) };
+}
+
+// Kurzbezeichnung der Verbindung für Meldungen und Exporte
+function connectionLabel(value = connection()) {
+  if (value.transport === 'rtu_serial') return `${value.serial_port || 'COM-Port?'} · ${value.baudrate} Baud ${value.data_format}`;
+  return `${value.host}:${value.port}`;
 }
 
 function setActivity(text, type = 'ok') {
@@ -256,37 +267,45 @@ $('#shutdownBtn').addEventListener('click', async () => {
 });
 
 function transportLabel(value = els.transport.value) {
-  return value === 'rtu_tcp' ? 'Modbus RTU über TCP' : 'Modbus TCP';
+  return {rtu_tcp: 'Modbus RTU über TCP', rtu_serial: 'Modbus RTU über USB'}[value] || 'Modbus TCP';
 }
 
 function updateTransportHint() {
   const isTransparent = els.transport.value === 'rtu_tcp';
+  const isSerial = els.transport.value === 'rtu_serial';
   $('#transportTitle').textContent = transportLabel();
+  $('#transportChip').textContent = isSerial ? 'RS485' : 'Port 502';
   $('#transportWarning').classList.toggle('hidden', !isTransparent);
+  document.body.classList.toggle('serial-mode', isSerial);
   if (isTransparent && Number(els.timeout.value) < 1200) els.timeout.value = 1500;
+  if (isSerial) window.loadSerialPorts?.();
 }
 
 els.transport.addEventListener('change', () => { updateTransportHint(); saveLocal(); });
 
-function markConnected(host, port, latency, transport) {
+function markConnected(host, port, latency, transport, label = '') {
   state.connected = true;
   els.status.className = 'status online';
   els.status.innerHTML = '<i></i>Verbunden';
   $('#connectResult').className = 'result-box success';
-  $('#connectResult').textContent = `${host}:${port} per TCP erreichbar · ${latency} ms · ${transportLabel(transport)}. Eine Modbus-Antwort wird im nächsten Schritt geprüft – unten «Weiter zu Schritt 04».`;
+  $('#connectResult').textContent = transport === 'rtu_serial'
+    ? `${label || host} geöffnet. Ob der Zähler antwortet, zeigt Schritt 04 «Unit-IDs» – oder unten «Einstellungen automatisch suchen», wenn Baudrate oder Adresse unbekannt sind.`
+    : `${host}:${port} per TCP erreichbar · ${latency} ms · ${transportLabel(transport)}. Eine Modbus-Antwort wird im nächsten Schritt geprüft – unten «Weiter zu Schritt 04».`;
 }
 
 $('#connectBtn').addEventListener('click', async () => {
   const button = $('#connectBtn');
   try {
     const data = await api('/api/connect', { connection: connection() }, button);
-    markConnected(data.host, data.port, data.latency_ms, data.transport);
-  } catch (_) {
+    markConnected(data.host, data.port, data.latency_ms, data.transport, data.label);
+  } catch (error) {
     state.connected = false;
     els.status.className = 'status offline';
     els.status.innerHTML = '<i></i>Nicht verbunden';
     $('#connectResult').className = 'result-box error';
-    $('#connectResult').textContent = 'Ziel nicht erreichbar. IP, Port, Netzwerk und Firewall prüfen.';
+    $('#connectResult').textContent = els.transport.value === 'rtu_serial'
+      ? error.message
+      : 'Ziel nicht erreichbar. IP, Port, Netzwerk und Firewall prüfen.';
   }
 });
 
@@ -342,7 +361,7 @@ $('#networkScanBtn').addEventListener('click', async () => {
       row.innerHTML = `<td>${escapeHtml(device.host)}</td><td>${device.port}</td><td>${device.latency_ms} ms</td><td class="${statusClass}" title="${escapeHtml(statusTitle)}">${statusText}</td><td>${hostname}</td><td>${macVendor}</td><td><button class="table-action">Verwenden</button></td>`;
       row.querySelector('button').addEventListener('click', () => {
         els.host.value = device.host; els.port.value = device.port; $('#scanPort').value = device.port;
-        if (device.modbus_transport) { els.transport.value = device.modbus_transport; updateTransportHint(); }
+        els.transport.value = device.modbus_transport || (els.transport.value === 'rtu_serial' ? 'tcp' : els.transport.value); updateTransportHint();
         selectTab('connection'); $('#connectBtn').click();
       });
       tbody.appendChild(row);
@@ -948,7 +967,7 @@ function renderMonitor(values = {}) {
       <td><strong>${escapeHtml(point.name)}</strong><br><small class="muted">Unit-ID ${point.unit_id} · FC0${point.function}</small></td>
       <td>${point.address}</td>
       <td>${escapeHtml(point.data_type.toUpperCase())} · ${escapeHtml(point.order || 'BIT')}<br><small class="muted">Faktor ${point.scale} · Offset ${point.offset}</small>${Number(point.read_count || registerCount(point)) > registerCount(point) ? `<small class="block-read-note">liest Block ${point.read_start}–${Number(point.read_start) + Number(point.read_count) - 1} · Wert-Offset ${point.value_offset}</small>` : ''}</td>
-      <td class="live-value">${result ? (result.ok ? `${formatNumber(result.value)} ${escapeHtml(point.unit)}` : 'FEHLER') : '–'}</td>
+      <td class="live-value">${result ? (result.ok ? `${formatNumber(result.value)} ${escapeHtml(point.unit)}` : 'FEHLER') : '–'}${result?.hints?.length ? `<small class="plausibility-hint" title="${escapeHtml(result.hints.join(' '))}">⚠ ${escapeHtml(result.hints[0])}</small>` : ''}</td>
       <td>${sparkline(state.histories[point.id] || [])}</td>
       <td class="row-actions">${[1, 3].includes(Number(point.function)) ? '<button class="write-button write-only" title="Wert schreiben (nur nach Freigabe)">✎</button>' : ''}<button class="delete-button" title="Datenpunkt entfernen">×</button></td>`;
     row.querySelector('.write-button')?.addEventListener('click', () => window.openWriteDialog?.(point, result?.ok ? result.value : undefined));
@@ -1056,12 +1075,23 @@ function applyProfile(data, notify = true) {
   $('#profileName').value = profile.name || ''; $('#profileProject').value = profile.project || '';
   $('#profileManufacturer').value = profile.manufacturer || ''; $('#profileModel').value = profile.model || '';
   $('#profileFirmware').value = profile.firmware || ''; $('#profileNotes').value = profile.notes || '';
-  if (data.connection) { els.host.value = data.connection.host || els.host.value; els.port.value = data.connection.port || 502; els.timeout.value = data.connection.timeout_ms || 800; els.transport.value = data.connection.transport || 'tcp'; if ($('#waitMs')) $('#waitMs').value = data.connection.wait_ms || 0; updateTransportHint(); }
+  if (data.connection) {
+    const saved = data.connection;
+    if (saved.transport === 'rtu_serial') {
+      window.setSerialSelection?.(saved.serial_port || '');
+      $('#baudrate').value = String(saved.baudrate || 9600); $('#dataFormat').value = saved.data_format || '8N1';
+    } else {
+      els.host.value = saved.host || els.host.value; els.port.value = saved.port || 502;
+    }
+    els.timeout.value = saved.timeout_ms || 800; els.transport.value = saved.transport || 'tcp';
+    if ($('#waitMs')) $('#waitMs').value = saved.wait_ms || 0;
+    updateTransportHint();
+  }
   state.points = data.points; state.histories = Object.fromEntries(state.points.map(point => [point.id, []]));
   saveLocal(); renderMonitor(); updateActiveProduct(); if (notify) toast(`${state.points.length} Datenpunkte importiert.`);
 }
 
-['profileName','profileProject','profileManufacturer','profileModel','profileFirmware','profileNotes','host','port','timeout'].forEach(id => document.getElementById(id).addEventListener('change', () => { saveLocal(); updateActiveProduct(); }));
+['profileName','profileProject','profileManufacturer','profileModel','profileFirmware','profileNotes','host','port','timeout','serialPort','baudrate','dataFormat'].forEach(id => document.getElementById(id).addEventListener('change', () => { saveLocal(); updateActiveProduct(); }));
 
 async function saveCurrentProfile(asNew = false) {
   const name = $('#profileName').value.trim();
@@ -1291,8 +1321,9 @@ function fillCatalogEntryBody(body, entry, identity) {
     ${entry.notes ? `<div class="ai-suggestion-notes">${escapeHtml(entry.notes)}</div>` : ''}
     ${sourceLink ? `<div class="ai-suggestion-notes">Quelle: ${sourceLink}</div>` : ''}
     ${noPointsHint}
-    <div class="button-row"><button class="delete-button catalog-delete-btn">Eintrag löschen</button></div>
+    <div class="button-row catalog-actions">${entry.points?.length ? `<label class="inline-label">Unit-ID<input class="catalog-unit-input" type="number" min="0" max="247" value="${escapeHtml($('#decoderUnit').value || 1)}"></label><button class="primary catalog-monitor-btn" type="button">Alle ${entry.points.length} Datenpunkte in den Live-Monitor</button>` : ''}<button class="delete-button catalog-delete-btn">Eintrag löschen</button></div>
     <div class="ai-lookup-results catalog-points"></div>`;
+  body.querySelector('.catalog-monitor-btn')?.addEventListener('click', () => addCatalogPointsToMonitor(entry, Number(body.querySelector('.catalog-unit-input').value)));
   const pointsContainer = body.querySelector('.catalog-points');
   (entry.points || []).forEach(point => pointsContainer.appendChild(buildPointCard(point, entry.verified ? 'Katalog · geprüft' : 'Katalog · unverifiziert')));
   body.querySelector('.catalog-delete-btn').addEventListener('click', async () => {
@@ -1305,6 +1336,34 @@ function fillCatalogEntryBody(body, entry, identity) {
       toast(error.message, true);
     }
   });
+}
+
+// Alle Register eines Nachschlagewerk-Eintrags als Monitorpunkte übernehmen (z. B. Zähler nach der RTU-Suche)
+function addCatalogPointsToMonitor(entry, unitId) {
+  if (!Number.isInteger(unitId) || unitId < 0 || unitId > 247) { toast('Bitte eine gültige Unit-ID (0–247) eingeben.', true); return; }
+  const usable = (entry.points || []).filter(point => [1, 2, 3, 4].includes(Number(point.function)) && Number.isInteger(point.address));
+  const words = {int16: 1, uint16: 1, float16: 1, int32: 2, uint32: 2, float32: 2, int64: 4, uint64: 4, float64: 4};
+  const existing = new Set(state.points.map(point => `${point.unit_id}:${point.function}:${point.address}:${point.data_type}`));
+  let added = 0;
+  usable.forEach(point => {
+    const dataType = [1, 2].includes(Number(point.function)) ? 'bool' : (point.data_type || 'uint16');
+    const key = `${unitId}:${Number(point.function)}:${point.address}:${dataType}`;
+    if (existing.has(key)) return;
+    const item = {
+      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+      name: point.name, unit: point.unit || '', scale: Number(point.scale ?? 1), offset: Number(point.offset ?? 0),
+      unit_id: unitId, function: Number(point.function), address: point.address, data_type: dataType, order: point.order || (dataType === 'bool' ? '' : 'AB'),
+      read_start: point.address, read_count: dataType === 'string' ? Number(point.length) || 1 : (words[dataType] || 1), value_offset: 0,
+      ...(dataType === 'string' ? {length: Number(point.length) || 1} : {}),
+    };
+    state.points.push(item); state.histories[item.id] = []; existing.add(key); added += 1;
+  });
+  if (!$('#profileManufacturer').value.trim()) $('#profileManufacturer').value = entry.manufacturer || '';
+  if (!$('#profileModel').value.trim()) $('#profileModel').value = entry.model || '';
+  if (!$('#profileName').value.trim()) $('#profileName').value = [entry.manufacturer, entry.model].filter(Boolean).join(' ').slice(0, 80);
+  saveLocal(); renderMonitor(); updateActiveProduct();
+  toast(added ? `${added} Datenpunkte mit Unit-ID ${unitId} in den Live-Monitor übernommen.` : 'Alle Datenpunkte sind bereits im Live-Monitor.');
+  if (added) selectTab('monitor');
 }
 
 function renderCatalogResults(entries) {
@@ -1453,9 +1512,10 @@ function csvCell(value) {
 
 $('#csvExportBtn').addEventListener('click', () => {
   if (!state.points.length) { toast('Noch keine Datenpunkte für den Visu-Export vorhanden.', true); return; }
-  const header = ['Bezeichnung', 'Host', 'Port', 'Transport', 'Unit-ID', 'Funktionscode', 'Register', 'Registeranzahl', 'Datentyp', 'Byte-/Word-Reihenfolge', 'Faktor', 'Offset', 'Einheit', 'Abfrage-Start', 'Abfrageanzahl', 'Wert-Offset'];
+  const current = connection();
+  const header = ['Bezeichnung', 'Host / COM-Port', 'Port / Baudrate', 'Transport', 'Unit-ID', 'Funktionscode', 'Register', 'Registeranzahl', 'Datentyp', 'Byte-/Word-Reihenfolge', 'Faktor', 'Offset', 'Einheit', 'Abfrage-Start', 'Abfrageanzahl', 'Wert-Offset'];
   const rows = state.points.map(point => [
-    point.name, els.host.value.trim(), els.port.value, els.transport.value,
+    point.name, current.host, current.transport === 'rtu_serial' ? `${current.baudrate} ${current.data_format}` : current.port, current.transport,
     point.unit_id, `FC${String(point.function).padStart(2, '0')}`, point.address, registerCount(point),
     point.data_type.toUpperCase(), point.order || 'BIT', point.scale, point.offset, point.unit,
     point.read_start ?? point.address, point.read_count ?? registerCount(point), point.value_offset ?? 0,
@@ -1463,7 +1523,7 @@ $('#csvExportBtn').addEventListener('click', () => {
   const csv = '\uFEFF' + [header, ...rows].map(row => row.map(csvCell).join(';')).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const link = document.createElement('a');
-  const base = ($('#profileName').value.trim() || `${els.host.value.trim()}-modbus`).replace(/[^a-z0-9äöü_-]+/gi, '-').replace(/^-|-$/g, '') || 'cko-modbus-registerplan';
+  const base = ($('#profileName').value.trim() || `${connection().host}-modbus`).replace(/[^a-z0-9äöü_-]+/gi, '-').replace(/^-|-$/g, '') || 'cko-modbus-registerplan';
   link.href = URL.createObjectURL(blob); link.download = `${base}-visu.csv`; link.click(); URL.revokeObjectURL(link.href);
   toast(`${state.points.length} Datenpunkte als Visu-CSV exportiert.`);
 });

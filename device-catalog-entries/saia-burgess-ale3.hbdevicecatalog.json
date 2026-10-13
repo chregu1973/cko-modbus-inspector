@@ -1,0 +1,33 @@
+{
+  "schema": "hbtec-device-catalog-entry",
+  "schema_version": 1,
+  "manufacturer": "Saia-Burgess Controls (Honeywell)",
+  "model": "ALE3 (ALE3D5FD10C2A00 / ALE3D5FD10C3A00 MID)",
+  "device_type": "energiezaehler",
+  "aliases": "ALE3, ALE3D5FD10C3A00, ALE3D5FD10C2A00, SBC ALE3 Modbus, Honeywell ALE3, Saia ALE3 direkt 65 A",
+  "notes": "RTU-Werkseinstellungen: Baudrate wird automatisch erkannt (1200-115200 bit/s); Datenformat laut DE-Datenblatt (Ausgabe 05.2017) ebenfalls automatisch erkannt: 8E1, 8O1 oder 8N2 (aeltere EN-Ausgabe 07.2011 nennt fix 8E1). Eine werkseitige Modbus-Adresse ist im Datenblatt nicht angegeben - am Geraet ablesen. Adresse aendern direkt am Zaehler: rechte Taste 3 s druecken, im Menue erhoeht die eine Taste um 10, die andere um 1; nach Auswahl warten, bis die Grundanzeige zurueckkehrt (oder Register 24 schreiben, FC16, nicht per Broadcast). Nur FC03 (Read Holding Registers) und FC16. Max. 20 Register pro Anfrage, sonst Exception 02. Registernummerierung im Datenblatt 1-basiert ('ein Register R wird bei der Uebertragung als R-1 nummeriert') - hier bereits umgerechnet: Adresse = R - 1. 32-Bit-Zaehler (R28-29 T1 total, R32-33 T2 total) High-Register zuerst = ABCD, Aufloesung 0,01 kWh. Leistungen in 0,01 kW -> scale 10 fuer W. Spannung in 1 V (ganzzahlig), Strom 0,1 A, cos phi 0,01. Vorzeichen der 16-Bit-Werte ist nicht dokumentiert, hier int16 angenommen (Zaehler misst nur Bezug). Gesamtbezug = T1 total + T2 total (bei Eintarif nur T1). Kein Frequenz-, kein Einspeiseregister. Schnittstelle funktioniert nur mit angeschlossener Phase L1, Kommunikation erst 30 s nach Power-On bereit, Daten werden nur alle 10 s aktualisiert. Kein interner Abschlusswiderstand. Achtung: Der Wandlerzaehler AWD3 hat eine abweichende Skalierung (siehe separaten Eintrag).",
+  "source_url": "https://sbc-support.com/uploads/tx_srcproducts/26-527_GER_DS_EnergyMeter-ALE3-with-Modbus.pdf",
+  "source_note": "Saia-Burgess Controls Datenblatt PP26-527 GER05 (05.2017) 'Energiezaehler ALE3 mit integrierter serieller Modbus-Schnittstelle', Registertabelle S. 6-7; abgeglichen mit EN-Ausgabe PP26-527 EN1 (07.2011)",
+  "verified": false,
+  "points": [
+    {"name": "Wirkenergie Tarif 1 total (Bezug)", "quantity_kind": "energy", "function": 3, "address": 27, "data_type": "uint32", "order": "ABCD", "scale": 0.01, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Tarif 2 total (Bezug)", "quantity_kind": "energy", "function": 3, "address": 31, "data_type": "uint32", "order": "ABCD", "scale": 0.01, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Tarif 1 partiell (ruecksetzbar)", "quantity_kind": "energy", "function": 3, "address": 29, "data_type": "uint32", "order": "ABCD", "scale": 0.01, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Spannung L1-N", "quantity_kind": "voltage", "function": 3, "address": 35, "data_type": "uint16", "order": "AB", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Strom L1", "quantity_kind": "current", "function": 3, "address": 36, "data_type": "uint16", "order": "AB", "scale": 0.1, "unit": "A", "confidence": "hoch"},
+    {"name": "Wirkleistung L1", "quantity_kind": "power", "function": 3, "address": 37, "data_type": "int16", "order": "AB", "scale": 10, "unit": "W", "confidence": "hoch"},
+    {"name": "Blindleistung L1", "quantity_kind": "other", "function": 3, "address": 38, "data_type": "int16", "order": "AB", "scale": 10, "unit": "VAr", "confidence": "hoch"},
+    {"name": "Leistungsfaktor (cos phi) L1", "quantity_kind": "other", "function": 3, "address": 39, "data_type": "int16", "order": "AB", "scale": 0.01, "unit": "", "confidence": "hoch"},
+    {"name": "Spannung L2-N", "quantity_kind": "voltage", "function": 3, "address": 40, "data_type": "uint16", "order": "AB", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Strom L2", "quantity_kind": "current", "function": 3, "address": 41, "data_type": "uint16", "order": "AB", "scale": 0.1, "unit": "A", "confidence": "hoch"},
+    {"name": "Wirkleistung L2", "quantity_kind": "power", "function": 3, "address": 42, "data_type": "int16", "order": "AB", "scale": 10, "unit": "W", "confidence": "hoch"},
+    {"name": "Leistungsfaktor (cos phi) L2", "quantity_kind": "other", "function": 3, "address": 44, "data_type": "int16", "order": "AB", "scale": 0.01, "unit": "", "confidence": "hoch"},
+    {"name": "Spannung L3-N", "quantity_kind": "voltage", "function": 3, "address": 45, "data_type": "uint16", "order": "AB", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Strom L3", "quantity_kind": "current", "function": 3, "address": 46, "data_type": "uint16", "order": "AB", "scale": 0.1, "unit": "A", "confidence": "hoch"},
+    {"name": "Wirkleistung L3", "quantity_kind": "power", "function": 3, "address": 47, "data_type": "int16", "order": "AB", "scale": 10, "unit": "W", "confidence": "hoch"},
+    {"name": "Leistungsfaktor (cos phi) L3", "quantity_kind": "other", "function": 3, "address": 49, "data_type": "int16", "order": "AB", "scale": 0.01, "unit": "", "confidence": "hoch"},
+    {"name": "Gesamt-Wirkleistung", "quantity_kind": "power", "function": 3, "address": 50, "data_type": "int16", "order": "AB", "scale": 10, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Blindleistung", "quantity_kind": "other", "function": 3, "address": 51, "data_type": "int16", "order": "AB", "scale": 10, "unit": "VAr", "confidence": "hoch"},
+    {"name": "Fehlerregister (Phasenfehler, Bitmaske)", "quantity_kind": "other", "function": 3, "address": 24, "data_type": "uint16", "order": "AB", "scale": 1, "unit": "", "confidence": "hoch"}
+  ]
+}

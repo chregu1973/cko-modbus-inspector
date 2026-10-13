@@ -1,0 +1,32 @@
+{
+  "schema": "hbtec-device-catalog-entry",
+  "schema_version": 1,
+  "manufacturer": "Eltako",
+  "model": "DSZ15DZMOD-3x80A MID",
+  "device_type": "energiezaehler",
+  "aliases": "DSZ15DZMOD, DSZ15DZMOD-3x80A, Eltako Zweirichtungs-Drehstromzaehler Modbus",
+  "notes": "RTU-Werkseinstellungen laut Eltako-Protokollspezifikation V1.6: 9600 bit/s, 8 Datenbits, keine Paritaet, 1 Stoppbit (8N1); Baudrate/Paritaet sind laut Spezifikation nur lesbar. Eine werkseitige Modbus-Adresse ist nicht dokumentiert (Bereich 1-250). Adresse am Geraet: Menuepunkt 'Modbus Geraeteadresse' per Taste einstellen, nach 5 s ohne Tastendruck wird sie uebernommen; alternativ Register 0x0014 per FC16 (2 Register). Messwerte mit FC04 (Input Register), Parameter mit FC03. Die Spezifikation listet Nummern 3xxxx (1-basiert) und 'Start address Hex' (0-basiert, im Frame) - hier die Hex-Startadressen in dezimal (z.B. 30073 -> 0x0048 = 72). Alle Werte 32 Bit ueber 2 Register, Speicherreihenfolge hoch -> niedrig (ABCD). Skalierung laut Spezifikation: alle Werte ausser Leistung und Leistungsfaktor unsigned mit 2 Dezimalstellen (scale 0.01: V, A, kWh); Leistungsfaktor signed mit 3 Dezimalstellen (scale 0.001); Leistung signed 'ohne Dezimalstelle' - die Tabelle nennt die Einheit kW, die ganzzahlige Darstellung entspricht praktisch W (so auch von Drittanbieter-Integrationen genutzt), daher hier scale 1 / W mit Konfidenz 'mittel' - bei Inbetriebnahme gegen Display pruefen. Keine Frequenz dokumentiert. Doku-Beispiel: Import 0x000001CD = 461 -> 4,61 kWh.",
+  "source_url": "https://www.eltako.com/fileadmin/downloads/de/_bedienung/Modbus-RTU_protocol_specification_for_DSZ15DZMOD_V1.6_English_version.pdf",
+  "source_note": "Eltako 'MODBUS-RTU PROTOCOL SPECIFICATION FOR DSZ15DZMOD V1.6' (Hersteller-PDF), Kapitel 3 Coding sheet; Bedienungsanleitung DSZ15DZMOD-3x80A (28380516-1 dt) fuer Adresseinstellung",
+  "verified": false,
+  "points": [
+    {"name": "Spannung L1-N", "quantity_kind": "voltage", "function": 4, "address": 0, "data_type": "uint32", "order": "ABCD", "scale": 0.01, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L2-N", "quantity_kind": "voltage", "function": 4, "address": 2, "data_type": "uint32", "order": "ABCD", "scale": 0.01, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L3-N", "quantity_kind": "voltage", "function": 4, "address": 4, "data_type": "uint32", "order": "ABCD", "scale": 0.01, "unit": "V", "confidence": "hoch"},
+    {"name": "Strom L1", "quantity_kind": "current", "function": 4, "address": 6, "data_type": "uint32", "order": "ABCD", "scale": 0.01, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L2", "quantity_kind": "current", "function": 4, "address": 8, "data_type": "uint32", "order": "ABCD", "scale": 0.01, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L3", "quantity_kind": "current", "function": 4, "address": 10, "data_type": "uint32", "order": "ABCD", "scale": 0.01, "unit": "A", "confidence": "hoch"},
+    {"name": "Wirkleistung L1", "quantity_kind": "power", "function": 4, "address": 12, "data_type": "int32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "mittel"},
+    {"name": "Wirkleistung L2", "quantity_kind": "power", "function": 4, "address": 14, "data_type": "int32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "mittel"},
+    {"name": "Wirkleistung L3", "quantity_kind": "power", "function": 4, "address": 16, "data_type": "int32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "mittel"},
+    {"name": "Leistungsfaktor L1", "quantity_kind": "other", "function": 4, "address": 30, "data_type": "int32", "order": "ABCD", "scale": 0.001, "unit": "", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L2", "quantity_kind": "other", "function": 4, "address": 32, "data_type": "int32", "order": "ABCD", "scale": 0.001, "unit": "", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L3", "quantity_kind": "other", "function": 4, "address": 34, "data_type": "int32", "order": "ABCD", "scale": 0.001, "unit": "", "confidence": "hoch"},
+    {"name": "Gesamt-Wirkleistung", "quantity_kind": "power", "function": 4, "address": 52, "data_type": "int32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "mittel"},
+    {"name": "Gesamt-Leistungsfaktor", "quantity_kind": "other", "function": 4, "address": 62, "data_type": "int32", "order": "ABCD", "scale": 0.001, "unit": "", "confidence": "hoch"},
+    {"name": "Wirkenergie Bezug (Import) total", "quantity_kind": "energy", "function": 4, "address": 72, "data_type": "uint32", "order": "ABCD", "scale": 0.01, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Einspeisung (Export) total", "quantity_kind": "energy", "function": 4, "address": 74, "data_type": "uint32", "order": "ABCD", "scale": 0.01, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Bezug partiell", "quantity_kind": "energy", "function": 4, "address": 96, "data_type": "uint32", "order": "ABCD", "scale": 0.01, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Einspeisung partiell", "quantity_kind": "energy", "function": 4, "address": 98, "data_type": "uint32", "order": "ABCD", "scale": 0.01, "unit": "kWh", "confidence": "hoch"}
+  ]
+}

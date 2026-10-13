@@ -812,3 +812,30 @@ button.small { padding: 7px 12px; font-size: 12px; }
 .link-button { margin-left: 10px; border: 0; background: none; color: var(--cyan); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 0; }
 .help-dialog .dialog-card.help-card { width: 100%; max-width: none; }
 .workflow-overview > strong .link-button { display: inline; width: auto; height: auto; padding: 0; border: 0; background: none; box-shadow: none; transform: none; color: var(--cyan); font-size: 12px; }
+
+/* Modbus RTU über USB */
+body:not(.serial-mode) .serial-only { display: none !important; }
+body.serial-mode .tcp-only { display: none !important; }
+.field-block { display: grid; gap: 7px; }
+.field-label { color: var(--muted); font-size: 12px; font-weight: 600; }
+.inline-field { display: flex; gap: 8px; align-items: stretch; }
+.inline-field select { flex: 1; min-width: 0; }
+.inline-field button { white-space: nowrap; }
+.rtu-wiring-card .card-head button { width: auto; }
+.rtu-wiring-image { display: block; width: 100%; max-height: 230px; object-fit: contain; margin: 4px 0 10px; border: 1px solid #dfe7f1; border-radius: 10px; background: #fff; }
+.rtu-checklist { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 12px; line-height: 1.5; color: #44546f; }
+.rtu-search-grid { grid-template-columns: 1.5fr .6fr .6fr 1fr auto auto; align-items: end; }
+.rtu-search-card td.good { color: #18804b; font-weight: 700; }
+.alert.success { color: #16683e; background: #edf9f2; border: 1px solid #bce4cb; }
+.alert.error { color: #a32b3b; background: #fff1f3; border: 1px solid #f2c4cb; }
+.alert.info { color: #1d4f86; background: #f1f7ff; border: 1px solid #cfe2f8; }
+.alert .link-button { margin-left: 0; }
+.plausibility-hint { display: block; margin-top: 4px; max-width: 320px; color: #9a6500; font-size: 10px; font-weight: 600; line-height: 1.35; white-space: normal; }
+.meter-list-dialog { width: min(1100px, calc(100vw - 32px)); padding: 0; border: 0; background: transparent; }
+.meter-list-dialog::backdrop { background: rgba(10, 20, 35, .55); backdrop-filter: blur(3px); }
+.meter-list-dialog .dialog-card { width: 100%; max-width: none; max-height: calc(100vh - 40px); overflow: auto; }
+.meter-list-table td { vertical-align: top; }
+@media (max-width: 1200px) { .rtu-search-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .rtu-search-grid { grid-template-columns: 1fr; } }
+.catalog-actions { align-items: end; flex-wrap: wrap; }
+.catalog-actions .inline-label input { width: 80px; }

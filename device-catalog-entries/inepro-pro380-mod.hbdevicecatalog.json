@@ -1,0 +1,32 @@
+{
+  "schema": "hbtec-device-catalog-entry",
+  "schema_version": 1,
+  "manufacturer": "inepro Metering",
+  "model": "PRO380-Mod",
+  "device_type": "energiezaehler",
+  "aliases": "PRO380-Mod, PRO380 Modbus, PRO380-S-Mod, PRO380-CT-Mod (Wandlerversion, gleiche Registerkarte)",
+  "notes": "RTU-Werkseinstellungen laut Handbuch: Modbus-ID 001, 9600 Baud, 8 Datenbits, Even Parity, 1 Stoppbit (8E1). Baudrate kann auf 4800/2400/1200/600/300 gesenkt, Paritaet auf none/odd gesetzt werden; Daten- und Stoppbits fix. Aendern am Geraet: ID in Program mode 2 (rechte Taste 3 s, Seite 'addr xxx', 5 s halten, Ziffern je mit beiden Tasten 3 s bestaetigen); Baudrate ('bd xxxx') und Paritaet ('PAr xxxx') in Program mode 3 mit Passwort (Werkseinstellung 0000). Alle Messwerte mit FC03, Float32 ABCD. Die Registeradressen im Handbuch sind hexadezimal (z.B. 5000) und werden hier direkt als 0-basierte Protokolladresse in dezimal verwendet (0x5000 = 20480); keine weitere Umrechnung. Leistung in kW -> scale 1000 fuer W; Energie in kWh (scale 1). 'Total active energy' (6000h) = Summe Import+Export; Bezug = 'Forward' (600Ch), Einspeisung = 'Reverse' (6018h). Die alte Registerkarte V1.14 bleibt laut inepro weiter nutzbar. Bei Tests ggf. 120-Ohm-Abschluss an Klemmen 22/23 setzen.",
+  "source_url": "https://ineprometering.com/wp-content/uploads/2019/04/PRO380-user-manual-V2.18v6.pdf",
+  "source_note": "inepro Metering PRO380 Series User Manual V2.18v6, Appendix 3 'PRO380-Mod', A3.2 Modbus register map S. 27-28 (Hersteller-PDF; inhaltsgleicher Mirror https://www.hw-group.com/files/pro380-user-manual-v2.18v6.pdf)",
+  "verified": false,
+  "points": [
+    {"name": "Spannung L1-N", "quantity_kind": "voltage", "function": 3, "address": 20482, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L2-N", "quantity_kind": "voltage", "function": 3, "address": 20484, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L3-N", "quantity_kind": "voltage", "function": 3, "address": 20486, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Netzfrequenz", "quantity_kind": "frequency", "function": 3, "address": 20488, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "Hz", "confidence": "hoch"},
+    {"name": "Strom L1", "quantity_kind": "current", "function": 3, "address": 20492, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L2", "quantity_kind": "current", "function": 3, "address": 20494, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L3", "quantity_kind": "current", "function": 3, "address": 20496, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Gesamt-Wirkleistung", "quantity_kind": "power", "function": 3, "address": 20498, "data_type": "float32", "order": "ABCD", "scale": 1000, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L1", "quantity_kind": "power", "function": 3, "address": 20500, "data_type": "float32", "order": "ABCD", "scale": 1000, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L2", "quantity_kind": "power", "function": 3, "address": 20502, "data_type": "float32", "order": "ABCD", "scale": 1000, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L3", "quantity_kind": "power", "function": 3, "address": 20504, "data_type": "float32", "order": "ABCD", "scale": 1000, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Leistungsfaktor", "quantity_kind": "other", "function": 3, "address": 20522, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L1", "quantity_kind": "other", "function": 3, "address": 20524, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L2", "quantity_kind": "other", "function": 3, "address": 20526, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L3", "quantity_kind": "other", "function": 3, "address": 20528, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "", "confidence": "hoch"},
+    {"name": "Wirkenergie total (Import+Export)", "quantity_kind": "energy", "function": 3, "address": 24576, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Bezug (Import, Forward)", "quantity_kind": "energy", "function": 3, "address": 24588, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Einspeisung (Export, Reverse)", "quantity_kind": "energy", "function": 3, "address": 24600, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "kWh", "confidence": "hoch"}
+  ]
+}
