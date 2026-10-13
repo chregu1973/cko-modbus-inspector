@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -204,3 +205,40 @@ class BundledCatalogSeedTests(unittest.TestCase):
         (entry,) = [item for item in self.store.list(query="SDM630") if item["model"] == "SDM630 / SDM630MCT"]
         self.assertEqual(self.store.get(entry["id"])["metadata"]["notes"], "eigene Notiz")
 
+
+
+class ProgramUpdateKeepsUserDataTests(unittest.TestCase):
+    """Programm-Update: mitgelieferte Geräte werden ergänzt, eigene und geänderte Einträge bleiben unangetastet."""
+
+    def write_bundle(self, folder, entries):
+        folder.mkdir(parents=True, exist_ok=True)
+        for index, entry in enumerate(entries):
+            (folder / f"entry-{index}.hbdevicecatalog.json").write_text(json.dumps(entry), encoding="utf-8")
+
+    def test_update_adds_only_missing_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            old, new = root / "old", root / "new"
+            self.write_bundle(old, [sample_entry("Eastron", "SDM630"), sample_entry("Askoma", "ASKOHEAT")])
+            self.write_bundle(new, [sample_entry("Eastron", "SDM630"), sample_entry("Askoma", "ASKOHEAT"),
+                                    sample_entry("inepro", "PRO380"), sample_entry("Saia", "ALE3")])
+            store = DeviceCatalogStore(root / "profiles.sqlite3")
+            self.assertEqual(store.seed_from_directory(old), 2)
+
+            entries = {entry["model"]: entry["id"] for entry in store.list()}
+            changed = store.get(entries["SDM630"])["payload"]
+            changed["notes"] = "eigene Ergänzung"
+            store.save(changed, entries["SDM630"])
+            store.delete(entries["ASKOHEAT"])
+            own = store.save({**sample_entry("Musterfirma", "Eigenbau"), "notes": "selbst angelegt"})
+            store.save({**sample_entry("inepro", "PRO380"), "notes": "meine Version"})
+
+            updated = DeviceCatalogStore(root / "profiles.sqlite3")  # Start der neuen Version
+            self.assertEqual(updated.seed_from_directory(new), 1)  # nur «Saia ALE3» ist neu
+            models = sorted(entry["model"] for entry in updated.list())
+            self.assertEqual(models, ["ALE3", "Eigenbau", "PRO380", "SDM630"])
+            self.assertEqual(updated.get(entries["SDM630"])["payload"]["notes"], "eigene Ergänzung")
+            self.assertEqual(updated.get(own["id"])["payload"]["notes"], "selbst angelegt")
+            pro380 = next(entry for entry in updated.list() if entry["model"] == "PRO380")
+            self.assertEqual(updated.get(pro380["id"])["payload"]["notes"], "meine Version")
+            self.assertEqual(updated.seed_from_directory(new), 0)  # weitere Starts ändern nichts
