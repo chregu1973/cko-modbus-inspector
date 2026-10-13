@@ -32,9 +32,14 @@ jobs:
       # Bootloader aus dem Quellcode übersetzen statt die vorgefertigte runw.exe zu verwenden:
       # die Standard-Bootloader werden von Virenscannern (ML-Erkennung, z. B. Wacatac!ml) oft fälschlich gemeldet.
       - name: PyInstaller mit eigenem Bootloader
-        env:
-          PYINSTALLER_COMPILE_BOOTLOADER: "1"
-        run: pip install --no-binary pyinstaller "pyinstaller==6.22.3"
+        shell: pwsh
+        run: |
+          git clone --quiet --depth 1 --branch v6.22.3 https://github.com/pyinstaller/pyinstaller.git "$env:RUNNER_TEMP\pyinstaller"
+          Push-Location "$env:RUNNER_TEMP\pyinstaller\bootloader"
+          python ./waf all --target-arch=64bit
+          if ($LASTEXITCODE -ne 0) { throw "Bootloader konnte nicht übersetzt werden." }
+          Pop-Location
+          pip install "$env:RUNNER_TEMP\pyinstaller"
       - name: Bootloader prüfen
         shell: pwsh
         run: |
