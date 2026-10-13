@@ -305,6 +305,10 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 - Home-Assistant-Export auch für serielle Verbindungen (`type: serial`).
 - Weitere Energiezähler im Nachschlagewerk (Herstellerangaben, siehe Quelle je Eintrag).
 
+## Änderungen in 0.5.1
+
+- Windows-Build mit selbst übersetztem PyInstaller-Bootloader: weniger Fehlalarme von Virenscannern (Microsoft Defender meldete 0.5.0 fälschlich als «Wacatac.H!ml»). Funktional unverändert.
+
 ## Datenquellen und Lizenzen
 
 - SunSpec-Modelle: SunSpec Alliance, Apache-2.0 – `data/SUNSPEC-LICENSE.txt`
