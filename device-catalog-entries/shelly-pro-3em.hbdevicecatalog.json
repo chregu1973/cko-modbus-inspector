@@ -1,0 +1,32 @@
+{
+  "schema": "hbtec-device-catalog-entry",
+  "schema_version": 1,
+  "manufacturer": "Shelly",
+  "model": "Pro 3EM (Modbus TCP, Profil 'triphase')",
+  "device_type": "energiezaehler",
+  "aliases": "Shelly Pro 3EM, Shelly Pro 3EM-400, SPEM-003CEBEU, SPEM-003CEBEU400",
+  "notes": "Modbus TCP (kein RTU): Port 502. Modbus-Server muss aktiviert werden (Web-UI Einstellungen > Modbus, bzw. RPC Modbus.SetConfig {\"config\":{\"enable\":true}}); ein Default-Wert ist in der API-Doku nicht angegeben, in der Praxis ab Werk deaktiviert. Unit-ID ist nicht dokumentiert (ueblich 1). Die Shelly-Doku nennt Adressen als 3xxxx = Input Register. Laut offiziellem Beispiel in der Modbus-Doku ('modbus -B mixed <ip> i@1020/f' liefert die Spannung Phase A = Register 31020) wird mit FC04 die Adresse = Tabellenwert - 30000 gelesen; so hier umgerechnet. Float-Wortreihenfolge ist nicht explizit dokumentiert; das offizielle Beispiel nutzt modbus_cli mit Byte-Order 'mixed' (Bytes je Wort big-endian, Wortreihenfolge little-endian) = CDAB - daher Konfidenz 'mittel' fuer die Reihenfolge. Energie (EMData) als Float in Wh -> scale 0.001 fuer kWh. Gilt fuer das Profil 'triphase' (eine EM-Komponente id 0). Im Profil 'monophase' gibt es stattdessen drei EM1-Komponenten mit eigener Registerkarte. Eine zweite EM-Komponente haette +80 (EM) bzw. +70 (EMData) Offset.",
+  "source_url": "https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/EM/",
+  "source_note": "Shelly Gen2+ API-Doku: Komponente EM (Modbus registers), EMData (https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/EMData/) und Modbus (https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Modbus/)",
+  "verified": false,
+  "points": [
+    {"name": "Gesamtstrom (Summe Phasen)", "quantity_kind": "current", "function": 4, "address": 1011, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "A", "confidence": "mittel"},
+    {"name": "Gesamt-Wirkleistung", "quantity_kind": "power", "function": 4, "address": 1013, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "W", "confidence": "mittel"},
+    {"name": "Gesamt-Scheinleistung", "quantity_kind": "other", "function": 4, "address": 1015, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "VA", "confidence": "mittel"},
+    {"name": "Spannung L1-N (Phase A)", "quantity_kind": "voltage", "function": 4, "address": 1020, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "V", "confidence": "mittel"},
+    {"name": "Strom L1 (Phase A)", "quantity_kind": "current", "function": 4, "address": 1022, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "A", "confidence": "mittel"},
+    {"name": "Wirkleistung L1 (Phase A)", "quantity_kind": "power", "function": 4, "address": 1024, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "W", "confidence": "mittel"},
+    {"name": "Leistungsfaktor L1 (Phase A)", "quantity_kind": "other", "function": 4, "address": 1028, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "", "confidence": "mittel"},
+    {"name": "Netzfrequenz (Phase A)", "quantity_kind": "frequency", "function": 4, "address": 1033, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "Hz", "confidence": "mittel"},
+    {"name": "Spannung L2-N (Phase B)", "quantity_kind": "voltage", "function": 4, "address": 1040, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "V", "confidence": "mittel"},
+    {"name": "Strom L2 (Phase B)", "quantity_kind": "current", "function": 4, "address": 1042, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "A", "confidence": "mittel"},
+    {"name": "Wirkleistung L2 (Phase B)", "quantity_kind": "power", "function": 4, "address": 1044, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "W", "confidence": "mittel"},
+    {"name": "Leistungsfaktor L2 (Phase B)", "quantity_kind": "other", "function": 4, "address": 1048, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "", "confidence": "mittel"},
+    {"name": "Spannung L3-N (Phase C)", "quantity_kind": "voltage", "function": 4, "address": 1060, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "V", "confidence": "mittel"},
+    {"name": "Strom L3 (Phase C)", "quantity_kind": "current", "function": 4, "address": 1062, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "A", "confidence": "mittel"},
+    {"name": "Wirkleistung L3 (Phase C)", "quantity_kind": "power", "function": 4, "address": 1064, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "W", "confidence": "mittel"},
+    {"name": "Leistungsfaktor L3 (Phase C)", "quantity_kind": "other", "function": 4, "address": 1068, "data_type": "float32", "order": "CDAB", "scale": 1, "unit": "", "confidence": "mittel"},
+    {"name": "Wirkenergie Bezug (Import) total", "quantity_kind": "energy", "function": 4, "address": 1162, "data_type": "float32", "order": "CDAB", "scale": 0.001, "unit": "kWh", "confidence": "mittel"},
+    {"name": "Wirkenergie Einspeisung (Export) total", "quantity_kind": "energy", "function": 4, "address": 1164, "data_type": "float32", "order": "CDAB", "scale": 0.001, "unit": "kWh", "confidence": "mittel"}
+  ]
+}

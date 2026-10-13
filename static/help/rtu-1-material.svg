@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" font-family="Segoe UI, Inter, Arial, sans-serif">
+  <title>Ausrüstung für die Prüfung von Modbus-RTU-Zählern</title>
+  <rect width="1200" height="600" fill="#ffffff"/>
+  <text x="40" y="52" font-size="26" font-weight="700" fill="#101b3d">Das brauchst du für die Prüfung</text>
+  <text x="40" y="84" font-size="16" fill="#5b6b82">Kein Gateway nötig – der Laptop übernimmt die Rolle des Modbus-Masters</text>
+
+  <g font-size="15">
+    <!-- 1 Adapter -->
+    <g transform="translate(40,120)">
+      <rect width="260" height="400" rx="16" fill="#f4f8fd" stroke="#dfe7f1" stroke-width="2"/>
+      <circle cx="40" cy="40" r="18" fill="#0a84c6"/><text x="40" y="46" font-size="17" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+      <path d="M70 150 h40" stroke="#101b3d" stroke-width="6" stroke-linecap="round"/>
+      <rect x="40" y="138" width="34" height="24" rx="3" fill="#c9d6e6" stroke="#101b3d" stroke-width="3"/>
+      <rect x="110" y="118" width="110" height="64" rx="10" fill="#101b3d"/>
+      <g font-size="12" font-weight="700" text-anchor="middle">
+        <rect x="120" y="158" width="26" height="18" rx="3" fill="#0a84c6"/><text x="133" y="171" fill="#fff">A</text>
+        <rect x="152" y="158" width="26" height="18" rx="3" fill="#e08a00"/><text x="165" y="171" fill="#fff">B</text>
+        <rect x="184" y="158" width="26" height="18" rx="3" fill="#6b7a90"/><text x="197" y="171" fill="#fff">G</text>
+      </g>
+      <text x="165" y="142" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">RS485</text>
+      <text x="24" y="240" font-size="19" font-weight="700" fill="#101b3d">USB-RS485-Adapter</text>
+      <text x="24" y="270" fill="#44546f">Chip FTDI, CH340 oder</text>
+      <text x="24" y="292" fill="#44546f">CP210x – Treiber bringt</text>
+      <text x="24" y="314" fill="#44546f">Windows meist mit.</text>
+      <text x="24" y="350" fill="#5b6b82" font-size="13">Erscheint als COM-Port,</text>
+      <text x="24" y="370" fill="#5b6b82" font-size="13">z. B. COM3.</text>
+    </g>
+    <!-- 2 Leitung -->
+    <g transform="translate(320,120)">
+      <rect width="260" height="400" rx="16" fill="#f4f8fd" stroke="#dfe7f1" stroke-width="2"/>
+      <circle cx="40" cy="40" r="18" fill="#0a84c6"/><text x="40" y="46" font-size="17" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+      <path d="M30 130 C 70 100, 90 160, 130 130 S 190 100, 230 130" fill="none" stroke="#0a84c6" stroke-width="6"/>
+      <path d="M30 130 C 70 160, 90 100, 130 130 S 190 160, 230 130" fill="none" stroke="#e08a00" stroke-width="6"/>
+      <path d="M30 180 H 230" fill="none" stroke="#6b7a90" stroke-width="5" stroke-dasharray="10 8"/>
+      <text x="24" y="240" font-size="19" font-weight="700" fill="#101b3d">Verdrillte Leitung</text>
+      <text x="24" y="270" fill="#44546f">Ein Paar für A/B,</text>
+      <text x="24" y="292" fill="#44546f">eine Ader für GND,</text>
+      <text x="24" y="314" fill="#44546f">z. B. J-Y(St)Y 2×2×0,8.</text>
+      <text x="24" y="350" fill="#5b6b82" font-size="13">Schirm einseitig erden,</text>
+      <text x="24" y="370" fill="#5b6b82" font-size="13">nicht als GND verwenden.</text>
+    </g>
+    <!-- 3 Abschluss -->
+    <g transform="translate(600,120)">
+      <rect width="260" height="400" rx="16" fill="#f4f8fd" stroke="#dfe7f1" stroke-width="2"/>
+      <circle cx="40" cy="40" r="18" fill="#0a84c6"/><text x="40" y="46" font-size="17" font-weight="700" fill="#fff" text-anchor="middle">3</text>
+      <path d="M40 140 H 95 M165 140 H 220" stroke="#101b3d" stroke-width="5"/>
+      <rect x="95" y="122" width="70" height="36" rx="4" fill="#ffffff" stroke="#101b3d" stroke-width="5"/>
+      <text x="130" y="200" font-size="22" font-weight="700" fill="#101b3d" text-anchor="middle">120 Ω</text>
+      <text x="24" y="240" font-size="19" font-weight="700" fill="#101b3d">Abschlusswiderstand</text>
+      <text x="24" y="270" fill="#44546f">Zwischen A und B an</text>
+      <text x="24" y="292" fill="#44546f">beiden Enden der Linie.</text>
+      <text x="24" y="314" fill="#44546f">Oft per DIP-Schalter.</text>
+      <text x="24" y="350" fill="#5b6b82" font-size="13">Kurzes Prüfkabel:</text>
+      <text x="24" y="370" fill="#5b6b82" font-size="13">meist ohne möglich.</text>
+    </g>
+    <!-- 4 Datenblatt -->
+    <g transform="translate(880,120)">
+      <rect width="280" height="400" rx="16" fill="#f4f8fd" stroke="#dfe7f1" stroke-width="2"/>
+      <circle cx="40" cy="40" r="18" fill="#0a84c6"/><text x="40" y="46" font-size="17" font-weight="700" fill="#fff" text-anchor="middle">4</text>
+      <path d="M100 86 h62 l26 26 v86 h-88 z" fill="#ffffff" stroke="#101b3d" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M162 86 v26 h26" fill="none" stroke="#101b3d" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M114 132 h58 M114 150 h58 M114 168 h40" stroke="#a9ccef" stroke-width="5" stroke-linecap="round"/>
+      <text x="24" y="240" font-size="19" font-weight="700" fill="#101b3d">Datenblatt (optional)</text>
+      <text x="24" y="270" fill="#44546f">Baudrate, Parität und</text>
+      <text x="24" y="292" fill="#44546f">Adresse ab Werk, z. B.</text>
+      <text x="24" y="314" fill="#44546f" font-weight="700">9600 Baud · 8E1 · ID 1</text>
+      <text x="24" y="350" fill="#5b6b82" font-size="13">Unbekannt? Die automatische</text>
+      <text x="24" y="370" fill="#5b6b82" font-size="13">Suche findet die Einstellungen.</text>
+    </g>
+  </g>
+</svg>

@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from connection_pool import ConnectionPool, ConnectionUnavailable
+from meter_list import plausibility
 
 try:
     import psutil
@@ -33,6 +34,13 @@ except ImportError:  # pragma: no cover - reported clearly at runtime
 
     class ModbusException(Exception):
         pass
+
+try:
+    from pymodbus.client import ModbusSerialClient
+    from serial.tools import list_ports
+except ImportError:  # pragma: no cover - RTU über USB meldet die fehlende Abhängigkeit
+    ModbusSerialClient = None
+    list_ports = None
 
 
 class InspectorError(Exception):
@@ -175,11 +183,34 @@ def exception_text(code: Any) -> str:
 
 @dataclass(frozen=True)
 class Target:
-    host: str
+    host: str          # bei RTU über USB: Name der seriellen Schnittstelle (z. B. COM3)
     port: int
     timeout: float
     transport: str
     wait_ms: int = 0
+    baudrate: int = 0
+    data_format: str = ""   # z. B. 8N1, 8E1, 8O1, 8N2
+
+    @property
+    def serial(self) -> bool:
+        return self.transport == "rtu_serial"
+
+    @property
+    def label(self) -> str:
+        if self.serial:
+            return f"{self.host} · RTU {self.baudrate} Baud {self.data_format}"
+        kind = "RTU über TCP" if self.transport == "rtu_tcp" else "Modbus TCP"
+        return f"{self.host}:{self.port} · {kind}"
+
+    @property
+    def settings(self) -> tuple:
+        return (self.timeout, self.baudrate, self.data_format)
+
+
+# RTU über USB-RS485: übliche Baudraten und Datenformate (Datenbits, Parität, Stoppbits)
+SERIAL_BAUDRATES = (1200, 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200)
+SERIAL_FORMATS = {"8N1": (8, "N", 1), "8E1": (8, "E", 1), "8O1": (8, "O", 1), "8N2": (8, "N", 2)}
+SERIAL_PORT_PATTERN = re.compile(r"^(COM\d{1,3}|/dev/[A-Za-z0-9._/-]{1,60})$", re.IGNORECASE)
 
 
 def _int(value: Any, name: str, minimum: int, maximum: int) -> int:
@@ -221,15 +252,33 @@ def _resolve_private_host(host: Any) -> str:
     return str(address)
 
 
+def _serial_target(connection: dict[str, Any], timeout_ms: int, wait_ms: int) -> Target:
+    port_name = str(connection.get("serial_port") or "").strip()
+    if not port_name:
+        raise InspectorError("Bitte die serielle Schnittstelle (COM-Port des USB-RS485-Adapters) wählen.")
+    if not SERIAL_PORT_PATTERN.match(port_name):
+        raise InspectorError("Ungültige serielle Schnittstelle. Erwartet z. B. COM3.")
+    baudrate = _int(connection.get("baudrate", 9600), "Baudrate", 300, 230400)
+    if baudrate not in SERIAL_BAUDRATES:
+        raise InspectorError(f"Baudrate {baudrate} wird nicht unterstützt. Üblich sind 9600, 19200 oder 38400.")
+    data_format = str(connection.get("data_format", "8N1")).strip().upper()
+    if data_format not in SERIAL_FORMATS:
+        raise InspectorError("Unbekanntes Datenformat. Erlaubt sind 8N1, 8E1, 8O1 und 8N2.")
+    port_name = port_name.upper() if port_name.upper().startswith("COM") else port_name
+    return Target(port_name, 0, timeout_ms / 1000, "rtu_serial", wait_ms, baudrate, data_format)
+
+
 def _target(payload: dict[str, Any]) -> Target:
     connection = payload.get("connection", payload)
-    host = _resolve_private_host(connection.get("host"))
-    port = _int(connection.get("port", 502), "Port", 1, 65535)
     timeout_ms = _int(connection.get("timeout_ms", 800), "Timeout", 50, 10000)
     transport = str(connection.get("transport", "tcp")).strip().lower()
-    if transport not in ("tcp", "rtu_tcp"):
-        raise InspectorError("Unbekannte Übertragungsart. Erlaubt sind Modbus TCP und RTU über TCP.")
     wait_ms = _int(connection.get("wait_ms", 0) or 0, "Pause zwischen Anfragen", 0, 2000)
+    if transport == "rtu_serial":
+        return _serial_target(connection, timeout_ms, wait_ms)
+    if transport not in ("tcp", "rtu_tcp"):
+        raise InspectorError("Unbekannte Übertragungsart. Erlaubt sind Modbus TCP, RTU über TCP und RTU über USB.")
+    host = _resolve_private_host(connection.get("host"))
+    port = _int(connection.get("port", 502), "Port", 1, 65535)
     return Target(host, port, timeout_ms / 1000, transport, wait_ms)
 
 
@@ -241,8 +290,27 @@ def _require_modbus():
         )
 
 
+def _serial_client(target: Target):
+    if ModbusSerialClient is None:
+        raise InspectorError("Für RTU über USB fehlt die Python-Abhängigkeit 'pyserial'. Bitte das aktuelle Setup installieren.", 503)
+    bytesize, parity, stopbits = SERIAL_FORMATS[target.data_format]
+    options: dict[str, Any] = {"port": target.host, "baudrate": target.baudrate, "bytesize": bytesize,
+                               "parity": parity, "stopbits": stopbits, "timeout": target.timeout}
+    try:
+        parameters = inspect.signature(ModbusSerialClient).parameters
+    except (TypeError, ValueError):
+        parameters = {}
+    if "framer" in parameters and FramerType is not None:
+        options["framer"] = FramerType.RTU
+    if "retries" in parameters:
+        options["retries"] = 0
+    return ModbusSerialClient(**options)
+
+
 def _client(target: Target):
     _require_modbus()
+    if target.serial:
+        return _serial_client(target)
     options = {"port": target.port, "timeout": target.timeout}
     if target.transport == "rtu_tcp":
         options["framer"] = FramerType.RTU
@@ -752,7 +820,88 @@ def connect_test(payload: dict[str, Any]) -> dict[str, Any]:
         "host": target.host,
         "port": target.port,
         "transport": target.transport,
+        "label": target.label,
         "latency_ms": round((time.perf_counter() - started) * 1000, 1),
+    }
+
+
+# Bekannte USB-RS485-Chips (USB-Hersteller-ID) für eine verständliche Anzeige der COM-Ports
+USB_SERIAL_CHIPS = {
+    "0403": "FTDI", "1A86": "WCH CH340/CH341", "10C4": "Silicon Labs CP210x", "067B": "Prolific PL2303",
+    "0483": "STMicroelectronics", "2341": "Arduino", "1D50": "OpenMoko/Open Hardware",
+}
+
+
+def list_serial_ports() -> dict[str, Any]:
+    """Serielle Schnittstellen des PCs, USB-Adapter zuerst."""
+    if list_ports is None:
+        return {"ok": True, "available": False, "ports": [],
+                "hint": "Die Python-Abhängigkeit 'pyserial' fehlt – RTU über USB ist in dieser Installation nicht verfügbar."}
+    ports = []
+    for port in list_ports.comports():
+        vid = f"{port.vid:04X}" if getattr(port, "vid", None) is not None else ""
+        chip = USB_SERIAL_CHIPS.get(vid, "")
+        description = str(port.description or "").strip()
+        if description in ("n/a", port.device):
+            description = ""
+        ports.append({
+            "device": port.device,
+            "description": description,
+            "manufacturer": str(getattr(port, "manufacturer", "") or ""),
+            "chip": chip,
+            "usb": bool(vid),
+        })
+    ports.sort(key=lambda item: (not item["usb"], _port_sort_key(item["device"])))
+    hint = None if ports else (
+        "Keine serielle Schnittstelle gefunden. USB-RS485-Adapter einstecken; erscheint er im Windows-Gerätemanager "
+        "mit gelbem Warnzeichen, fehlt der Treiber (häufig CH340 oder CP210x)."
+    )
+    return {"ok": True, "available": True, "ports": ports, "hint": hint}
+
+
+def _port_sort_key(device: str) -> tuple:
+    match = re.search(r"(\d+)$", device)
+    return (re.sub(r"\d+$", "", device), int(match.group(1)) if match else 0)
+
+
+def rtu_probe_timeout_ms(baudrate: int) -> int:
+    """Kurzes Timeout für die Suche: Übertragungszeit von Anfrage und Antwort plus Reaktionszeit des Zählers."""
+    frame_ms = 20 * 11 * 1000 / max(baudrate, 1)  # ca. 20 Zeichen à 11 Bit hin und zurück
+    return int(min(1500, max(120, 100 + 2 * frame_ms)))
+
+
+def rtu_probe(payload: dict[str, Any]) -> dict[str, Any]:
+    """Eine Kombination aus Baudrate und Datenformat auf einem ID-Bereich prüfen (Teil der RTU-Suche)."""
+    connection = dict(payload.get("connection") or {})
+    connection["transport"] = "rtu_serial"
+    baudrate = _int(connection.get("baudrate", 9600), "Baudrate", 300, 230400)
+    connection.setdefault("timeout_ms", rtu_probe_timeout_ms(baudrate))
+    if payload.get("auto_timeout", True):
+        connection["timeout_ms"] = rtu_probe_timeout_ms(baudrate)
+    connection["wait_ms"] = max(int(connection.get("wait_ms") or 0), 20)  # Ruhezeit zwischen Telegrammen
+    target = _target({"connection": connection})
+    start_id = _int(payload.get("start_id", 1), "Start-ID", 1, 247)
+    end_id = _int(payload.get("end_id", 10), "End-ID", 1, 247)
+    if end_id < start_id:
+        raise InspectorError("Die End-ID muss grösser oder gleich der Start-ID sein.")
+    function = _int(payload.get("function", 3), "Funktionscode", 1, 4)
+    address = _int(payload.get("address", 0), "Testadresse", 0, 65535)
+    found: list[dict[str, Any]] = []
+    started = time.perf_counter()
+    with _shared(target, "RTU-Suche", fresh=True) as client:
+        for unit_id in range(start_id, end_id + 1):
+            item, fingerprint = _probe_unit(client, function, address, unit_id, time.perf_counter())
+            if fingerprint:
+                found.append(item)
+    return {
+        "ok": True,
+        "serial_port": target.host,
+        "baudrate": target.baudrate,
+        "data_format": target.data_format,
+        "timeout_ms": round(target.timeout * 1000),
+        "scanned": end_id - start_id + 1,
+        "found": found,
+        "duration_ms": round((time.perf_counter() - started) * 1000),
     }
 
 
@@ -1236,6 +1385,12 @@ def scan_unit_ids(payload: dict[str, Any]) -> dict[str, Any]:
     if len(found) >= 8 and len(set(fingerprints)) == 1:
         warning = ("Viele Unit-IDs liefern dieselbe Antwort. Das Gerät oder Gateway wertet die Unit-ID vermutlich nicht aus – "
                    "dann ist jede ID gültig, üblich sind 1 oder 255. Für Modbus-TCP-Geräte die ID aus der Herstellerangabe verwenden.")
+    elif not found and target.serial:
+        warning = (
+            "Keine Antwort über die RS485-Leitung. Häufigste Ursachen: A/B vertauscht, falsche Baudrate oder Parität, "
+            "fehlender Abschlusswiderstand oder ein zweiter Master (z. B. Gateway) aktiv am Bus. "
+            "In Schritt 03 «Einstellungen automatisch suchen» probiert alle üblichen Kombinationen durch."
+        )
     elif not found:
         warning = (
             "Der TCP-Port ist erreichbar, aber es kam keine gültige Modbus-Antwort. "
@@ -1460,6 +1615,8 @@ def poll_points(payload: dict[str, Any]) -> dict[str, Any]:
                     continue
                 raw = block_raw[value_offset : value_offset + logical_count]
                 value = bool(raw[0]) if function in (1, 2) else decode_selected([int(item) for item in raw], data_type, point.get("order"))
+                if data_type in ("float32", "float16") and isinstance(value, float) and math.isfinite(value):
+                    value = float(f"{value:.7g}")  # Float32 hat ~7 gültige Stellen: 231.4 statt 231.399994
                 if isinstance(value, (int, float)) and not isinstance(value, bool):
                     scale = _float(point.get("scale", 1), "Skalierung", -1_000_000, 1_000_000)
                     offset = _float(point.get("offset", 0), "Offset", -1_000_000_000, 1_000_000_000)
@@ -1472,6 +1629,7 @@ def poll_points(payload: dict[str, Any]) -> dict[str, Any]:
                     "read_start": read_start,
                     "read_count": read_count,
                     "value_offset": value_offset,
+                    "hints": plausibility(point, value),
                 })
             except (InspectorError, OSError, ModbusException, struct.error) as error:
                 results.append({"id": point_id, "ok": False, "error": str(error)})

@@ -12,7 +12,7 @@ a = Analysis(
         (str(root / "device-catalog-entries"), "device-catalog-entries"),
         (str(root / "data"), "data"),
     ],
-    hiddenimports=["app", "sunspec", "ha_export", "loxone_import", "connection_pool"],
+    hiddenimports=["app", "sunspec", "ha_export", "loxone_import", "connection_pool", "meter_list", "serial", "serial.tools.list_ports"],
 )
 pyz = PYZ(a.pure)
 exe = EXE(

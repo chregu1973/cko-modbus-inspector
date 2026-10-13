@@ -1,0 +1,31 @@
+{
+  "schema": "hbtec-device-catalog-entry",
+  "schema_version": 1,
+  "manufacturer": "Saia-Burgess Controls (Honeywell)",
+  "model": "AWD3 (AWD3D5WD00C2A00 / AWD3D5WD00C3A00 MID)",
+  "device_type": "energiezaehler",
+  "aliases": "AWD3, AWD3D5WD00C3A00, AWD3D5WD00C2A00, SBC AWD3 Wandlerzaehler Modbus, Honeywell AWD3",
+  "notes": "Wandlerzaehler (x/5 A) mit gleichem Registerlayout wie ALE3, aber ANDERER Skalierung - daher eigener Eintrag. RTU-Werkseinstellungen laut Datenblatt: Baudrate automatisch erkannt (1200-115200 bit/s), 8 Datenbits, Even Parity, 1 Stoppbit (8E1). Werkseitige Modbus-Adresse nicht dokumentiert - am Geraet ablesen. Adresse direkt am Geraet aendern: Taste 3 s druecken, eine Taste +10, die andere +1, warten bis Grundanzeige zurueckkehrt (oder Register 24 per FC16). Nur FC03/FC16, max. 20 Register pro Anfrage. Registernummern im Datenblatt 1-basiert (R wird als R-1 uebertragen) - hier umgerechnet: Adresse = R - 1. 32-Bit-Zaehler High-Register zuerst (ABCD). Energie in 0,1 kWh (Primaerwert), Leistung in 0,1 kW -> scale 100 fuer W. Strom: in A ganzzahlig (Primaerwert), AUSNAHME Wandlerverhaeltnis 5/5: dann 0,1 A - in diesem Fall scale auf 0.1 aendern. Wandlerverhaeltnis steht in Register 26 (Adresse 25), z.B. 100/5 -> 20. Spannung 1 V, cos phi 0,01. Nur ein Tarif-Total (T1) und ein Partialzaehler. Keine Frequenz, kein Einspeisezaehler. Interface nur mit Phase L1 aktiv, 30 s Bereitschaftszeit nach Power-On, Datenaktualisierung alle 10 s.",
+  "source_url": "https://www.meterbuy.com/fileadmin/user_upload/Data_sheets/111115_Saia_-_3-phase_indirect_meter_with_ModBus_-_26-528_EN_DS_Energy-Meter-AWD3-with-Modbus.pdf",
+  "source_note": "Saia-Burgess Controls Datenblatt PP26-528 EN 'AWD3 Energy meter with integrated Serial Modbus interface', Registertabelle S. 6-7 (Hersteller-PDF, Mirror meterbuy.com; Original auf sbc-support.com)",
+  "verified": false,
+  "points": [
+    {"name": "Wirkenergie Tarif 1 total (Bezug)", "quantity_kind": "energy", "function": 3, "address": 27, "data_type": "uint32", "order": "ABCD", "scale": 0.1, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Tarif 1 partiell (ruecksetzbar)", "quantity_kind": "energy", "function": 3, "address": 29, "data_type": "uint32", "order": "ABCD", "scale": 0.1, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wandlerverhaeltnis (z.B. 20 = 100/5)", "quantity_kind": "other", "function": 3, "address": 25, "data_type": "uint16", "order": "AB", "scale": 1, "unit": "", "confidence": "hoch"},
+    {"name": "Spannung L1-N", "quantity_kind": "voltage", "function": 3, "address": 35, "data_type": "uint16", "order": "AB", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Strom L1", "quantity_kind": "current", "function": 3, "address": 36, "data_type": "uint16", "order": "AB", "scale": 1, "unit": "A", "confidence": "mittel"},
+    {"name": "Wirkleistung L1", "quantity_kind": "power", "function": 3, "address": 37, "data_type": "int16", "order": "AB", "scale": 100, "unit": "W", "confidence": "hoch"},
+    {"name": "Leistungsfaktor (cos phi) L1", "quantity_kind": "other", "function": 3, "address": 39, "data_type": "int16", "order": "AB", "scale": 0.01, "unit": "", "confidence": "hoch"},
+    {"name": "Spannung L2-N", "quantity_kind": "voltage", "function": 3, "address": 40, "data_type": "uint16", "order": "AB", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Strom L2", "quantity_kind": "current", "function": 3, "address": 41, "data_type": "uint16", "order": "AB", "scale": 1, "unit": "A", "confidence": "mittel"},
+    {"name": "Wirkleistung L2", "quantity_kind": "power", "function": 3, "address": 42, "data_type": "int16", "order": "AB", "scale": 100, "unit": "W", "confidence": "hoch"},
+    {"name": "Leistungsfaktor (cos phi) L2", "quantity_kind": "other", "function": 3, "address": 44, "data_type": "int16", "order": "AB", "scale": 0.01, "unit": "", "confidence": "hoch"},
+    {"name": "Spannung L3-N", "quantity_kind": "voltage", "function": 3, "address": 45, "data_type": "uint16", "order": "AB", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Strom L3", "quantity_kind": "current", "function": 3, "address": 46, "data_type": "uint16", "order": "AB", "scale": 1, "unit": "A", "confidence": "mittel"},
+    {"name": "Wirkleistung L3", "quantity_kind": "power", "function": 3, "address": 47, "data_type": "int16", "order": "AB", "scale": 100, "unit": "W", "confidence": "hoch"},
+    {"name": "Leistungsfaktor (cos phi) L3", "quantity_kind": "other", "function": 3, "address": 49, "data_type": "int16", "order": "AB", "scale": 0.01, "unit": "", "confidence": "hoch"},
+    {"name": "Gesamt-Wirkleistung", "quantity_kind": "power", "function": 3, "address": 50, "data_type": "int16", "order": "AB", "scale": 100, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Blindleistung", "quantity_kind": "other", "function": 3, "address": 51, "data_type": "int16", "order": "AB", "scale": 100, "unit": "VAr", "confidence": "hoch"}
+  ]
+}

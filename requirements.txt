@@ -3,4 +3,4 @@ pymodbus>=3.7,<4
 psutil>=5.9,<8
 anthropic>=0.40,<1
 google-genai>=1.0,<3
-
+pyserial>=3.5,<4

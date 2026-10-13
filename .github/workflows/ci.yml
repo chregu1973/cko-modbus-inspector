@@ -43,13 +43,17 @@ jobs:
           }
           $page = Invoke-WebRequest "http://127.0.0.1:48799/" -UseBasicParsing
           $catalog = Invoke-RestMethod "http://127.0.0.1:48799/api/device-catalog"
+          $ports = Invoke-RestMethod "http://127.0.0.1:48799/api/serial-ports"
           Stop-Process -Id $process.Id -Force
           if (-not $ok -or $page.StatusCode -ne 200) { throw "Die gebaute Anwendung startet nicht." }
-          if ($catalog.counts.total -lt 80) { throw "Mitgelieferte Geräteeinträge fehlen: $($catalog.counts.total)" }
+          if ($catalog.counts.total -lt 95) { throw "Mitgelieferte Geräteeinträge fehlen: $($catalog.counts.total)" }
           $models = Get-ChildItem -Path "dist/CKO-Modbus-Inspector" -Recurse -Filter "sunspec_models.json" | Select-Object -First 1
           if (-not $models) { throw "SunSpec-Modelle fehlen in der gebauten Anwendung." }
           $help = Get-ChildItem -Path "dist/CKO-Modbus-Inspector" -Recurse -Filter "help-1-start.webp" | Select-Object -First 1
           if (-not $help) { throw "Bilder der Kurzanleitung fehlen in der gebauten Anwendung." }
+          $rtu = Get-ChildItem -Path "dist/CKO-Modbus-Inspector" -Recurse -Filter "rtu-wiring.svg" | Select-Object -First 1
+          if (-not $rtu) { throw "Grafiken der RTU-Anleitung fehlen in der gebauten Anwendung." }
+          if (-not $ports.available) { throw "pyserial fehlt in der gebauten Anwendung (RTU über USB)." }
           Write-Host "Nachschlagewerk: $($catalog.counts.total) Einträge"
       - name: Build Windows installer
         shell: pwsh

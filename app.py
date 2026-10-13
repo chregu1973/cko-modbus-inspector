@@ -20,15 +20,19 @@ from gemini_lookup import lookup_device_points as gemini_lookup_device_points
 from gemini_lookup import lookup_quantity as gemini_lookup_quantity
 from ha_export import build_yaml as build_ha_yaml
 from loxone_import import convert as convert_loxone
+from meter_list import build_csv as build_meter_csv
+from meter_list import build_rows as build_meter_rows
 from modbus_core import (
     InspectorError,
     connect_test,
     connection_status,
     encode_value,
     list_interfaces,
+    list_serial_ports,
     match_register_values,
     poll_points,
     read_values,
+    rtu_probe,
     scan_network,
     scan_registers,
     scan_unit_ids,
@@ -40,7 +44,7 @@ from modbus_core import (
 from profile_store import ProfileStore
 
 
-APP_VERSION = "0.4.0"
+APP_VERSION = "0.5.0"
 DEFAULT_PORT = 48722
 # Mitgelieferte Geräteeinträge; im Windows-Setup liegen sie neben dem Programmcode
 BUNDLED_CATALOG_DIR = Path(__file__).resolve().parent / "device-catalog-entries"
@@ -162,6 +166,17 @@ def connect():
     return jsonify(connect_test(payload))
 
 
+@app.get("/api/serial-ports")
+def serial_ports():
+    return jsonify(list_serial_ports())
+
+
+@app.post("/api/rtu-probe")
+def rtu_probe_route():
+    payload = request.get_json(force=True, silent=False) or {}
+    return jsonify(rtu_probe(payload))
+
+
 @app.post("/api/network-scan")
 def network_scan():
     payload = request.get_json(force=True, silent=False) or {}
@@ -258,6 +273,17 @@ def export_home_assistant():
     except (ValueError, TypeError) as error:
         raise InspectorError(str(error), 400)
     return jsonify({"ok": True, "yaml": text})
+
+
+@app.post("/api/export/meter-list")
+def export_meter_list():
+    payload = request.get_json(force=True, silent=False) or {}
+    try:
+        rows = build_meter_rows(payload.get("points") or [], payload.get("connection") or {}, payload.get("values") or {})
+    except (ValueError, TypeError) as error:
+        raise InspectorError(str(error), 400)
+    return jsonify({"ok": True, "rows": rows, "csv": build_meter_csv(rows),
+                    "warnings": sum(1 for row in rows if row["hints"])})
 
 
 @app.get("/api/profile-library")

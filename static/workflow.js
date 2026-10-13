@@ -4,10 +4,10 @@
     {tab: 'products', title: 'Gerät & Profil', optional: 'optional – es geht auch ohne Geräteauswahl',
       what: 'Bekanntes Gerät aus der Bibliothek oder dem Nachschlagewerk wählen, um dessen Register gleich zu nutzen.',
       next: 'Ohne Geräteauswahl einfach weiter: Netzwerk-Scan – oder direkt zu Schritt 03 «Verbindung», wenn die IP-Adresse bekannt ist.'},
-    {tab: 'network', title: 'Netzwerk-Scan', optional: 'optional, wenn die IP-Adresse bekannt ist', what: 'Modbus-Geräte im Netz finden.',
+    {tab: 'network', title: 'Netzwerk-Scan', optional: 'optional, wenn die IP-Adresse bekannt ist oder bei RTU über USB', what: 'Modbus-Geräte im Netz finden.',
       next: 'In der Trefferliste «Verwenden» klicken – das Gerät wird in Schritt 03 übernommen und verbunden.'},
-    {tab: 'connection', title: 'Verbindung', what: 'IP-Adresse, Port und Übertragungsart (TCP oder RTU über TCP) prüfen.',
-      next: 'Wenn «erreichbar» erscheint: in Schritt 04 die Unit-ID ermitteln.'},
+    {tab: 'connection', title: 'Verbindung', what: 'Gerät im Netz (TCP) oder RS485-Zähler über USB-Adapter verbinden – bei RTU findet die automatische Suche Baudrate, Format und Adresse.',
+      next: 'Wenn «erreichbar» bzw. «geöffnet» erscheint: in Schritt 04 die Unit-ID ermitteln. Hat die RTU-Suche den Zähler gefunden, direkt zu Schritt 06 «Decoder» oder das Gerät im Nachschlagewerk wählen.'},
     {tab: 'units', title: 'Unit-IDs', what: 'Herausfinden, unter welcher ID das Gerät antwortet.',
       next: 'Bei der gefundenen ID «Register suchen» klicken. Ist die Registerliste bekannt, direkt zu Schritt 06 «Decoder».'},
     {tab: 'finder', title: 'Register-Finder', optional: 'optional, wenn die Registerliste bekannt ist', what: 'Belegte Register in einem Bereich suchen.',
@@ -33,6 +33,7 @@
     [/^\/api\/profile-library\/[^/]+$/, 'products'],
     [/^\/api\/network-scan$/, 'network'],
     [/^\/api\/connect$/, 'connection'],
+    [/^\/api\/rtu-probe$/, 'connection', (data) => (data.found || []).length > 0],
     [/^\/api\/unit-scan$/, 'units', (data) => (data.found || []).length > 0],
     [/^\/api\/register-scan$/, 'finder'],
     [/^\/api\/read$/, 'decoder'],
@@ -65,11 +66,12 @@
     if (!heading) return;
     const box = document.createElement('div');
     box.className = 'workflow-overview';
-    box.innerHTML = `<strong>So gehst du vor <button type="button" class="link-button" data-open-help>Bebilderte Anleitung öffnen →</button></strong><ol>${STEPS.map((step, index) => `
+    box.innerHTML = `<strong>So gehst du vor <button type="button" class="link-button" data-open-help>Bebilderte Anleitung öffnen →</button> <button type="button" class="link-button" data-open-rtu>RS485-Zähler über USB in Betrieb nehmen →</button></strong><ol>${STEPS.map((step, index) => `
       <li><button type="button" data-overview-step="${step.tab}"><span>${String(index + 1).padStart(2, '0')}</span>
       <b>${step.title}</b><small>${step.what}${step.optional ? ` <em>(${step.optional})</em>` : ''}</small></button></li>`).join('')}</ol>`;
     box.addEventListener('click', (event) => {
       if (event.target.closest('[data-open-help]')) { window.openHelp?.(0); return; }
+      if (event.target.closest('[data-open-rtu]')) { window.openHelp?.(0, 'rtu'); return; }
       const button = event.target.closest('[data-overview-step]');
       if (button) goTo(button.dataset.overviewStep);
     });

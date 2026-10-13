@@ -167,7 +167,7 @@
       }, $('#haExportBtn'));
       const blob = new Blob([data.yaml], {type: 'text/yaml;charset=utf-8'});
       const link = document.createElement('a');
-      const base = ($('#profileName').value.trim() || `${els.host.value.trim()}-modbus`).replace(/[^a-z0-9äöü_-]+/gi, '-').replace(/^-|-$/g, '') || 'cko-modbus';
+      const base = ($('#profileName').value.trim() || `${connection().host}-modbus`).replace(/[^a-z0-9äöü_-]+/gi, '-').replace(/^-|-$/g, '') || 'cko-modbus';
       link.href = URL.createObjectURL(blob); link.download = `${base}-home-assistant.yaml`; link.click(); URL.revokeObjectURL(link.href);
       toast(`${state.points.length} Datenpunkte als Home-Assistant-YAML exportiert.`);
     } catch (_) { /* api zeigt den Fehler */ }

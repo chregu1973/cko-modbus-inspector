@@ -1,0 +1,31 @@
+{
+  "schema": "hbtec-device-catalog-entry",
+  "schema_version": 1,
+  "manufacturer": "Finder",
+  "model": "7M.38.8.400.0212 (Modbus RTU)",
+  "device_type": "energiezaehler",
+  "aliases": "Finder 7M.38, 7M38, 7M.38.8.400.0212, Finder Typ 7M.38 Modbus MID",
+  "notes": "RTU-Werkseinstellungen laut Benutzerhandbuch: 19200 bit/s, 8N2 (8 Datenbits, keine Paritaet, 2 Stoppbits), Modbus-Adresse 33. Aenderung am Geraet ueber die kapazitive Taste: Menue Kommunikation (lang beruehren) -> Geraeteadresse / Bits pro Sekunde / Paritaet (none/odd/even) / Stoppbits (1/2), Wert mit langer Beruehrung speichern. Die IR-Schnittstelle laeuft fix mit 19200 8N2, Adresse 33. Messwerte sind Input Register (FC04). Registerangabe im Finder-Dokument als 3xxxx, das Dokument-Beispiel zeigt: Startregister 0x006B = 107 entspricht Register 30107 (U1). Umrechnung daher Adresse = Register - 30000 (NICHT -30001). Hier werden die IEEE-754-Register (Block 32480 ff.) verwendet, big-endian ABCD (Dok-Beispiel 123.45 = 42F6 E666). Die Register 30100 ff. verwenden ein proprietaeres Exponent/Mantisse-Format (T5/T6) und sind mit festem scale nicht dekodierbar. Max. Registeranzahl pro Anfrage steht im Register 30099 (Adresse 99). Energie: Die vier nicht ruecksetzbaren MID-Zaehler n1..n4 (E1..E4) sind konfigurierbar; Einheit laut Tabelle n1/n3 Wh, n2/n4 varh. Die uebliche Belegung n1 = Wirkenergie Import (A.I.0), n3 = Wirkenergie Export (A.E.0) ist aus der Tabelle abgeleitet, nicht explizit als Werkseinstellung dokumentiert - am Display (Kodierung A.I.0 / A.E.0) pruefen. Float32 in Wh -> scale 0.001 fuer kWh (Float-Aufloesung nimmt bei grossen Zaehlerstaenden ab).",
+  "source_url": "https://cdn.findernet.com/app/uploads/2021/09/20090052/Modbus-7M24-7M38_v2_30062021.pdf",
+  "source_note": "Finder 'MODBUS COMMUNICATION PROTOCOL 7M24 - 7M38' (Abschnitt 7M38, Measurements IEEE 754, S. 29-31) und Finder Benutzerhandbuch Typ 7M.38 DE (RS485-Kommunikation, Voreinstellungen): https://cdn.findernet.com/app/uploads/Benutzerhandbuch_Typ_7M38_DE.pdf",
+  "verified": false,
+  "points": [
+    {"name": "Netzfrequenz", "quantity_kind": "frequency", "function": 4, "address": 2498, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "Hz", "confidence": "hoch"},
+    {"name": "Spannung L1-N", "quantity_kind": "voltage", "function": 4, "address": 2500, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L2-N", "quantity_kind": "voltage", "function": 4, "address": 2502, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L3-N", "quantity_kind": "voltage", "function": 4, "address": 2504, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Strom L1", "quantity_kind": "current", "function": 4, "address": 2516, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L2", "quantity_kind": "current", "function": 4, "address": 2518, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L3", "quantity_kind": "current", "function": 4, "address": 2520, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Wirkleistung L1", "quantity_kind": "power", "function": 4, "address": 2530, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L2", "quantity_kind": "power", "function": 4, "address": 2532, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L3", "quantity_kind": "power", "function": 4, "address": 2534, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Wirkleistung", "quantity_kind": "power", "function": 4, "address": 2536, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "W", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L1", "quantity_kind": "other", "function": 4, "address": 2554, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L2", "quantity_kind": "other", "function": 4, "address": 2556, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "", "confidence": "hoch"},
+    {"name": "Leistungsfaktor L3", "quantity_kind": "other", "function": 4, "address": 2558, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "", "confidence": "hoch"},
+    {"name": "Gesamt-Leistungsfaktor", "quantity_kind": "other", "function": 4, "address": 2560, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "", "confidence": "hoch"},
+    {"name": "Wirkenergie Bezug (Import, Zaehler n1/E1)", "quantity_kind": "energy", "function": 4, "address": 2752, "data_type": "float32", "order": "ABCD", "scale": 0.001, "unit": "kWh", "confidence": "mittel"},
+    {"name": "Wirkenergie Einspeisung (Export, Zaehler n3/E3)", "quantity_kind": "energy", "function": 4, "address": 2756, "data_type": "float32", "order": "ABCD", "scale": 0.001, "unit": "kWh", "confidence": "mittel"}
+  ]
+}

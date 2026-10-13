@@ -1,0 +1,29 @@
+{
+  "schema": "hbtec-device-catalog-entry",
+  "schema_version": 1,
+  "manufacturer": "Schneider Electric",
+  "model": "Acti9 iEM3150 / iEM3155 (iEM3000-Serie, Modbus RTU)",
+  "device_type": "energiezaehler",
+  "aliases": "iEM3150, iEM3155, A9MEM3150, A9MEM3155, Acti9 iEM3000 Modbus, iEM3250/iEM3255 (gleiche Registerkarte, Wandlerversion), iEM3350/iEM3355 (125 A)",
+  "notes": "RTU-Parameter am Geraet: Konfigurationsmodus mit OK + ESC ca. 2 s gedrueckt halten, Passwort (Werkseinstellung 0010), Menue 'Communication': Slave Address 1-247, Baud Rate 9600/19200/38400, Parity Even/Odd/None, Stoppbits fix 1. Die Werkseinstellung der Kommunikation ist im Handbuch nur als 'varies depending on protocol' angegeben; das Menue bietet 19200 und Even jeweils als ersten Wert an - Werkswerte am Display pruefen. Nur FC03 (Read Holding Registers), FC16, FC43/14. Das Handbuch DOCA0005EN-14 fuehrt 'Address' (hex, im Frame verwendet) und 'Register' (dezimal, Register = Address + 1). Hier wird die 0-basierte Address verwendet, also Registernummer minus 1 (z.B. I1: Register 3000 -> Adresse 2999 = 0x0BB7). Achtung: aeltere Ausgaben (DOCA0005EN-04) bezeichnen die Registernummer missverstaendlich als 'address encoded in the frame'. Float32 und Int64 big-endian (ABCD/ABCDEFGH). Leistung in kW (Float) -> scale 1000 fuer W. Energie Int64 in Wh -> scale 0.001 fuer kWh (alternativ Float32-Register ab 45100, in EN-14 als kWh dokumentiert). Leistungsfaktor 3084 ist kodiert (-2..2, Quadrantenkodierung, nicht der reine cos phi). iEM3150: kein Export-, Blind- und Scheinleistungs-/energieregister ('Not applicable'); iEM3155: zusaetzlich Export, Tarife, Blindleistung.",
+  "source_url": "https://www.se.com/ww/en/download/document/DOCA0005EN/",
+  "source_note": "Schneider Electric iEM3100/iEM3200/iEM3300 series User Manual DOCA0005EN-14, Kapitel 'Communications via Modbus', Tabellen 'Meter Data' und 'Energy values' (Hersteller-PDF); Adressumrechnung mit DOCA0005EN-04 abgeglichen",
+  "verified": false,
+  "points": [
+    {"name": "Strom L1", "quantity_kind": "current", "function": 3, "address": 2999, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L2", "quantity_kind": "current", "function": 3, "address": 3001, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Strom L3", "quantity_kind": "current", "function": 3, "address": 3003, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "A", "confidence": "hoch"},
+    {"name": "Spannung L1-N", "quantity_kind": "voltage", "function": 3, "address": 3027, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L2-N", "quantity_kind": "voltage", "function": 3, "address": 3029, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Spannung L3-N", "quantity_kind": "voltage", "function": 3, "address": 3031, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "V", "confidence": "hoch"},
+    {"name": "Wirkleistung L1", "quantity_kind": "power", "function": 3, "address": 3053, "data_type": "float32", "order": "ABCD", "scale": 1000, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L2", "quantity_kind": "power", "function": 3, "address": 3055, "data_type": "float32", "order": "ABCD", "scale": 1000, "unit": "W", "confidence": "hoch"},
+    {"name": "Wirkleistung L3", "quantity_kind": "power", "function": 3, "address": 3057, "data_type": "float32", "order": "ABCD", "scale": 1000, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Wirkleistung", "quantity_kind": "power", "function": 3, "address": 3059, "data_type": "float32", "order": "ABCD", "scale": 1000, "unit": "W", "confidence": "hoch"},
+    {"name": "Gesamt-Leistungsfaktor (kodiert -2..2)", "quantity_kind": "other", "function": 3, "address": 3083, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "", "confidence": "hoch"},
+    {"name": "Netzfrequenz", "quantity_kind": "frequency", "function": 3, "address": 3109, "data_type": "float32", "order": "ABCD", "scale": 1, "unit": "Hz", "confidence": "hoch"},
+    {"name": "Wirkenergie Bezug (Import) total", "quantity_kind": "energy", "function": 3, "address": 3203, "data_type": "int64", "order": "ABCDEFGH", "scale": 0.001, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Einspeisung (Export) total (nur iEM3155)", "quantity_kind": "energy", "function": 3, "address": 3207, "data_type": "int64", "order": "ABCDEFGH", "scale": 0.001, "unit": "kWh", "confidence": "hoch"},
+    {"name": "Wirkenergie Bezug partiell (ruecksetzbar)", "quantity_kind": "energy", "function": 3, "address": 3255, "data_type": "int64", "order": "ABCDEFGH", "scale": 0.001, "unit": "kWh", "confidence": "hoch"}
+  ]
+}

@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" font-family="Segoe UI, Inter, Arial, sans-serif">
+  <title>RS485-Bus mit mehreren Zählern in Linie</title>
+  <rect width="1200" height="600" fill="#ffffff"/>
+  <text x="40" y="52" font-size="26" font-weight="700" fill="#101b3d">Mehrere Zähler an einem Bus</text>
+  <text x="40" y="84" font-size="16" fill="#5b6b82">Linie von Zähler zu Zähler · Abschluss an beiden Enden · eigene Adresse je Zähler</text>
+
+  <!-- Bus -->
+  <g fill="none" stroke-width="5" stroke-linecap="round">
+    <path d="M200 300 H 1080" stroke="#0a84c6"/>
+    <path d="M200 322 H 1080" stroke="#e08a00"/>
+  </g>
+  <text x="1094" y="306" font-size="14" font-weight="700" fill="#0a84c6">A</text>
+  <text x="1094" y="328" font-size="14" font-weight="700" fill="#e08a00">B</text>
+
+  <!-- Master -->
+  <g transform="translate(40,250)">
+    <rect width="160" height="120" rx="14" fill="#101b3d"/>
+    <text x="80" y="42" font-size="16" font-weight="700" fill="#fff" text-anchor="middle">Master</text>
+    <text x="80" y="66" font-size="13" fill="#a9ccef" text-anchor="middle">Laptop mit</text>
+    <text x="80" y="84" font-size="13" fill="#a9ccef" text-anchor="middle">USB-RS485</text>
+    <text x="80" y="150" font-size="13" fill="#5b6b82" text-anchor="middle">später: Gateway</text>
+  </g>
+
+  <!-- Abschluss links -->
+  <g transform="translate(230,300)">
+    <path d="M0 0 V 6 M0 22 V 46" stroke="#101b3d" stroke-width="3"/>
+    <rect x="-8" y="6" width="16" height="16" rx="2" fill="#fff" stroke="#101b3d" stroke-width="3"/>
+    <text x="0" y="-14" font-size="14" font-weight="700" fill="#101b3d" text-anchor="middle">120 Ω</text>
+  </g>
+
+  <!-- Zähler -->
+  <g font-size="14" text-anchor="middle">
+    <g transform="translate(360,140)">
+      <path d="M50 160 V 120 M80 182 V 120" stroke="#101b3d" stroke-width="3"/>
+      <rect x="0" y="0" width="130" height="120" rx="10" fill="#f4f8fd" stroke="#101b3d" stroke-width="3"/>
+      <rect x="18" y="16" width="94" height="34" rx="5" fill="#dff3e8" stroke="#16894a" stroke-width="2"/>
+      <text x="65" y="80" font-size="15" font-weight="700" fill="#101b3d">Zähler 1</text>
+      <text x="65" y="102" fill="#0a84c6" font-weight="700">ID 1</text>
+    </g>
+    <g transform="translate(590,140)">
+      <path d="M50 160 V 120 M80 182 V 120" stroke="#101b3d" stroke-width="3"/>
+      <rect x="0" y="0" width="130" height="120" rx="10" fill="#f4f8fd" stroke="#101b3d" stroke-width="3"/>
+      <rect x="18" y="16" width="94" height="34" rx="5" fill="#dff3e8" stroke="#16894a" stroke-width="2"/>
+      <text x="65" y="80" font-size="15" font-weight="700" fill="#101b3d">Zähler 2</text>
+      <text x="65" y="102" fill="#0a84c6" font-weight="700">ID 2</text>
+    </g>
+    <g transform="translate(820,140)">
+      <path d="M50 160 V 120 M80 182 V 120" stroke="#101b3d" stroke-width="3"/>
+      <rect x="0" y="0" width="130" height="120" rx="10" fill="#f4f8fd" stroke="#101b3d" stroke-width="3"/>
+      <rect x="18" y="16" width="94" height="34" rx="5" fill="#dff3e8" stroke="#16894a" stroke-width="2"/>
+      <text x="65" y="80" font-size="15" font-weight="700" fill="#101b3d">Zähler 3</text>
+      <text x="65" y="102" fill="#0a84c6" font-weight="700">ID 3</text>
+    </g>
+  </g>
+
+  <!-- Abschluss rechts -->
+  <g transform="translate(1050,300)">
+    <path d="M0 0 V 6 M0 22 V 46" stroke="#101b3d" stroke-width="3"/>
+    <rect x="-8" y="6" width="16" height="16" rx="2" fill="#fff" stroke="#101b3d" stroke-width="3"/>
+    <text x="0" y="-14" font-size="14" font-weight="700" fill="#101b3d" text-anchor="middle">120 Ω</text>
+  </g>
+
+  <text x="640" y="370" font-size="15" fill="#5b6b82" text-anchor="middle">alle Zähler: gleiche Baudrate und Parität, z. B. 9600 Baud 8E1</text>
+
+  <!-- Regeln -->
+  <g transform="translate(40,410)" font-size="15">
+    <rect width="540" height="150" rx="12" fill="#edf9f2" stroke="#bce4cb"/>
+    <text x="20" y="34" font-size="17" font-weight="700" fill="#16683e">✓ So ist es richtig</text>
+    <text x="20" y="64" fill="#24553b">• Linie: von Zähler zu Zähler weiterverbinden</text>
+    <text x="20" y="90" fill="#24553b">• 120 Ω nur am ersten und letzten Teilnehmer</text>
+    <text x="20" y="116" fill="#24553b">• jede Unit-ID nur einmal (1–247)</text>
+    <text x="20" y="142" fill="#24553b">• genau ein Master fragt ab</text>
+  </g>
+  <g transform="translate(620,410)" font-size="15">
+    <rect width="540" height="150" rx="12" fill="#fff1f3" stroke="#f2c4cb"/>
+    <text x="20" y="34" font-size="17" font-weight="700" fill="#a32b3b">✗ Typische Fehler</text>
+    <text x="20" y="64" fill="#7a2733">• Sternverdrahtung oder lange Stichleitungen</text>
+    <text x="20" y="90" fill="#7a2733">• Abschluss an jedem Zähler (Bus überlastet)</text>
+    <text x="20" y="116" fill="#7a2733">• zwei Zähler mit derselben Adresse</text>
+    <text x="20" y="142" fill="#7a2733">• Gateway und Laptop fragen gleichzeitig ab</text>
+  </g>
+</svg>
