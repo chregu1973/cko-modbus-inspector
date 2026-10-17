@@ -87,8 +87,8 @@
           <div class="card-head"><div><span class="icon">＋</span><h3>Neues Geräteprofil beginnen</h3></div></div>
           <div class="form-grid product-create-grid">
             <label>Produkt-/Profilname<input id="newProductName" placeholder="z. B. Produktionszähler PVA"></label>
-            <label>Hersteller<input id="newProductManufacturer" placeholder="falls bekannt"></label>
-            <label>Modell<input id="newProductModel" placeholder="Typ / Version"></label>
+            <label>Hersteller<input id="newProductManufacturer" list="manufacturerPresets" placeholder="falls bekannt"></label>
+            <label>Modell<input id="newProductModel" list="modelPresets" placeholder="Typ / Version"></label>
             <label>Projekt/Anlage<input id="newProductProject" placeholder="z. B. MFH Musterstrasse"></label>
             <label>Firmware<input id="newProductFirmware" placeholder="optional"></label>
           </div>
@@ -299,11 +299,13 @@
           </div>
           <div class="finder-actions">
             <label class="check-label"><input id="finderHideZero" type="checkbox">Nullwerte ausblenden</label>
-            <label class="check-label"><input id="finderHideFFFF" type="checkbox" checked>FFFF-Platzhalter ausblenden</label>
+            <label class="check-label" title="0xFFFF kann je nach Datentyp 65535, −1 (Int16) oder Teil eines Mehrregisterwerts sein – vor dem Ausblenden prüfen."><input id="finderHideFFFF" type="checkbox">Rohregister mit 0xFFFF ausblenden</label>
             <label class="check-label"><input id="finderChangedOnly" type="checkbox" disabled>Nur Änderungen</label>
+            <label class="inline-label">Adresse suchen<input id="finderAddressSearch" type="number" min="0" max="65535" placeholder="z. B. 30849"></label>
             <div class="button-row"><button id="saveSnapshotBtn" class="secondary" disabled>Als Referenz speichern</button><button id="clearSnapshotBtn" class="secondary" disabled>Referenz löschen</button></div>
           </div>
           <div id="finderSummary" class="inline-summary hidden"></div>
+          <div id="finderFilterHint" class="finder-filter-hint hidden"></div>
           <div id="finderWarning" class="alert warning hidden"></div>
           <div class="table-wrap"><table><thead><tr><th>FC</th><th>Adresse</th><th>Hex</th><th>Dezimal</th><th>Vorher</th><th>Änderung</th><th></th></tr></thead><tbody id="finderResults"><tr class="empty"><td colspan="7">Noch kein Registerbereich gescannt.</td></tr></tbody></table></div>
         </article>
@@ -328,6 +330,23 @@
             <div class="button-row"><button id="decoderPrevBtn" class="secondary" disabled>← Vorheriges Register</button><button id="decoderNextBtn" class="secondary" disabled>Nächstes Register →</button></div>
             <span>Rohregister anklicken, um ab dieser Adresse neu zu lesen. Lehnt das Gerät den Bereich ab, liest der Inspector automatisch den lesbaren Teil.</span>
           </div>
+          <details class="address-helper">
+            <summary>Adressassistent: Handbuchadresse umrechnen</summary>
+            <p class="hint">Welches Schema ein Gerät verlangt, steht in dessen Dokumentation oder einem geprüften Profil – hier nur zur Umrechnung, keine Festlegung.</p>
+            <div class="form-grid">
+              <label>Handbuch-/Referenzadresse<input id="addrHelperInput" type="number" min="0" placeholder="z. B. 30849"></label>
+              <label>Adressschema<select id="addrHelperScheme">
+                <option value="direct0">Direkte Protokolladresse (0-basiert)</option>
+                <option value="direct1">Direkte Registernummer (1-basiert)</option>
+                <option value="ref400001">Referenz „Holding Register ab 40001“ (FC03)</option>
+                <option value="ref300001">Referenz „Input Register ab 30001“ (FC04)</option>
+                <option value="ref000001">Referenz „Coils ab 00001“ (FC01)</option>
+                <option value="ref100001">Referenz „Discrete Inputs ab 10001“ (FC02)</option>
+              </select></label>
+            </div>
+            <div id="addrHelperResult" class="hint"></div>
+            <button id="addrHelperApplyBtn" class="secondary" type="button" disabled>In Startadresse/Funktion übernehmen →</button>
+          </details>
         </article>
         <article class="card glass target-search-card">
           <div class="card-head"><div><span class="icon">≈</span><h3>Plausiblen Wert suchen</h3></div><span class="chip">ohne zusätzliche Busabfrage</span></div>
@@ -349,7 +368,7 @@
         </article>
         <div id="decoderEmpty" class="empty-state glass"><div class="radar">⌁</div><h3>Bereit zum Lesen</h3><p>Wähle Unit-ID, Funktion und Startadresse. Für 32-Bit-Werte werden zwei, für 64-Bit-Werte vier Register benötigt.</p></div>
         <div id="decoderOutput" class="hidden">
-          <article class="card glass raw-card"><div><span class="eyebrow">ROHREGISTER</span><div id="rawValues" class="raw-values"></div></div><span id="readTimestamp" class="muted"></span></article>
+          <article class="card glass raw-card"><div><span class="eyebrow">ROHREGISTER</span><div id="rawValues" class="raw-values"></div><span id="readUnitInfo" class="muted"></span></div><span id="readTimestamp" class="muted"></span></article>
           <div id="decodeGroups" class="decode-groups"></div>
         </div>
       </section>
@@ -362,8 +381,8 @@
         <article class="card glass profile-card">
           <div class="form-grid profile-grid">
             <label>Produkt-/Profilname<input id="profileName" placeholder="z. B. Siemens PAC2200"></label>
-            <label>Hersteller<input id="profileManufacturer" placeholder="Hersteller"></label>
-            <label>Modell<input id="profileModel" placeholder="Typ / Version"></label>
+            <label>Hersteller<input id="profileManufacturer" list="manufacturerPresets" placeholder="Hersteller"></label>
+            <label>Modell<input id="profileModel" list="modelPresets" placeholder="Typ / Version"></label>
             <label>Projekt/Anlage<input id="profileProject" placeholder="Kunde, Objekt oder Anlage"></label>
             <label>Firmware<input id="profileFirmware" placeholder="Firmware / Revision"></label>
             <label>Notiz<input id="profileNotes" placeholder="Projektwissen, Gateway, Besonderheiten …"></label>
@@ -403,6 +422,20 @@
       </div>
       <div id="pointReadStrategy" class="point-read-strategy hidden"></div>
       <div class="dialog-actions"><button id="cancelPointBtn" value="cancel" class="secondary">Abbrechen</button><button id="savePointBtn" value="default" class="primary">Übernehmen</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="templateConnectionDialog">
+    <form method="dialog" class="dialog-card glass">
+      <div class="dialog-head"><div><span class="eyebrow">ANSCHLUSSPRÜFUNG</span><h3>Für neues Projekt verwenden</h3></div><button value="cancel" class="icon-button" title="Abbrechen">×</button></div>
+      <p class="hint">Register, Datentypen und Faktoren werden übernommen. Der bisherige Anschluss stammt aus dem alten Projekt und wird hier bewusst geprüft, bevor eine neue Anlage damit abgefragt wird.</p>
+      <div id="templateConnectionSummary" class="recommendation-grid"></div>
+      <div class="form-grid">
+        <label class="check-label span-2" title="Standardmässig wird IP/Port bzw. COM-Port NICHT übernommen, damit nicht versehentlich die alte Anlage abgefragt wird."><input id="templateKeepConnection" type="checkbox"> Bisherigen Anschluss (IP/Port bzw. COM-Port) übernehmen</label>
+        <label id="templateUnitIdRow" class="hidden">Unit-ID für alle Datenpunkte<input id="templateUnitIdOverride" type="number" min="0" max="247"></label>
+        <p id="templateUnitIdHintRow" class="hint span-2 hidden"><span id="templateUnitIdHint"></span></p>
+      </div>
+      <div class="dialog-actions"><button value="cancel" class="secondary">Abbrechen</button><button id="templateConnectionConfirmBtn" value="confirm" class="primary">Weiter: Netzwerk prüfen →</button></div>
     </form>
   </dialog>
 
@@ -460,6 +493,8 @@
     </form>
   </dialog>
 
+  <datalist id="manufacturerPresets"></datalist>
+  <datalist id="modelPresets"></datalist>
   <div id="toast" class="toast"></div>
   <script>window.HB_APP_VERSION = {{ app_version|tojson }};</script>
   <script src="{{ url_for('static', filename='app.js') }}?v={{ app_version }}"></script>

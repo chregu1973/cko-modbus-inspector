@@ -1245,6 +1245,12 @@ def _readable(response: Any) -> bool:
     return response is not None and not response.isError()
 
 
+def _response_unit_id(response: Any) -> int | None:
+    """Unit-ID, wie sie pymodbus aus der tatsächlichen Antwort dekodiert hat (nicht die angefragte ID)."""
+    value = getattr(response, "dev_id", None)
+    return int(value) if isinstance(value, int) else None
+
+
 def _largest_readable_count(client, function: int, address: int, count: int, unit_id: int) -> tuple[int, Any]:
     """Grösste Anzahl ab der Startadresse, die das Gerät als Block annimmt (höchstens ~8 Anfragen)."""
     low, high, best = 1, count - 1, (0, None)
@@ -1311,6 +1317,7 @@ def read_values(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "ok": True,
         "unit_id": unit_id,
+        "response_unit_id": _response_unit_id(response),
         "function": function,
         "function_name": FUNCTIONS[function][0],
         "transport": target.transport,
@@ -1629,6 +1636,8 @@ def poll_points(payload: dict[str, Any]) -> dict[str, Any]:
                     "read_start": read_start,
                     "read_count": read_count,
                     "value_offset": value_offset,
+                    "unit_id": unit_id,
+                    "response_unit_id": _response_unit_id(response),
                     "hints": plausibility(point, value),
                 })
             except (InspectorError, OSError, ModbusException, struct.error) as error:

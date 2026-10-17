@@ -7,6 +7,7 @@ const state = {
   pendingPoint: null,
   points: [],
   histories: {},
+  pointState: {},
   pollTimer: null,
   pollAbortController: null,
   polling: false,
@@ -17,6 +18,7 @@ const state = {
   registerProgressTimer: null,
   databaseProfileId: null,
   profileLibrary: [],
+  knownDevices: [],
 };
 
 const els = {
@@ -114,6 +116,36 @@ async function profileLibraryRequest(path, options = {}, button = null) {
   }
 }
 
+// Hersteller/Modell aus Profilbibliothek und Nachschlagewerk als Eingabehilfe anbieten (Freitext bleibt möglich,
+// nichts wird automatisch zusammengeführt) – unabhängig von einer gerade aktiven Suche, damit die Vorschläge
+// immer den vollständigen bekannten Bestand zeigen
+async function loadDeviceDatalists() {
+  try {
+    const [profiles, catalog] = await Promise.all([
+      profileLibraryRequest('/api/profile-library?q='),
+      profileLibraryRequest('/api/device-catalog?q=&type=&status='),
+    ]);
+    state.knownDevices = [...profiles.profiles, ...catalog.entries];
+    updateManufacturerModelPresets();
+  } catch (_) {
+    // Autovervollständigung bleibt leer; Freitexteingabe funktioniert trotzdem
+  }
+}
+
+function updateManufacturerModelPresets(manufacturerFilter = '') {
+  const devices = state.knownDevices || [];
+  const manufacturers = [...new Set(devices.map(item => item.manufacturer).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  $('#manufacturerPresets').innerHTML = manufacturers.map(name => `<option value="${escapeHtml(name)}">`).join('');
+  const key = manufacturerFilter.trim().toLowerCase();
+  const matching = key ? devices.filter(item => (item.manufacturer || '').trim().toLowerCase() === key) : devices;
+  const models = [...new Set((matching.length ? matching : devices).map(item => item.model).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  $('#modelPresets').innerHTML = models.map(name => `<option value="${escapeHtml(name)}">`).join('');
+}
+
+['newProductManufacturer', 'profileManufacturer'].forEach(id => {
+  document.getElementById(id).addEventListener('input', event => updateManufacturerModelPresets(event.target.value));
+});
+
 async function refreshProfileLibrary(query = $('#productSearch').value.trim()) {
   const status = $('#productSearchStatus');
   status.textContent = 'Profilbibliothek wird durchsucht …';
@@ -166,18 +198,69 @@ function renderProductResults(profiles, query = '') {
   });
 }
 
+// Kompakte Beschreibung einer gespeicherten Verbindung für die Anschlussprüfung (keine Live-Abfrage)
+function describeConnectionForReview(conn) {
+  if (!conn) return 'Keine gespeicherte Verbindung.';
+  return conn.transport === 'rtu_serial'
+    ? `${conn.serial_port || 'COM-Port unbekannt'} · ${conn.baudrate || '–'} Baud ${conn.data_format || ''}`
+    : `${conn.host || '–'}:${conn.port || '–'} (${transportLabel(conn.transport)})`;
+}
+
+// Vorlagenübernahme: Gerätewissen und bisherigen Anschluss getrennt zeigen, bevor eine neue Anlage
+// damit abgefragt wird – verhindert, dass versehentlich der alte Projektanschluss weiterläuft
+function openTemplateConnectionReview(payload) {
+  return new Promise(resolve => {
+    const points = payload.points || [];
+    const unitIds = [...new Set(points.map(point => point.unit_id))];
+    const singleUnit = unitIds.length === 1;
+    $('#templateConnectionSummary').innerHTML = `
+      <div><small>Produkt</small><strong>${escapeHtml([payload.profile?.manufacturer, payload.profile?.model].filter(Boolean).join(' · ') || payload.profile?.name || '–')}</strong></div>
+      <div><small>Bisheriges Projekt</small><strong>${escapeHtml(payload.profile?.project || '–')}</strong></div>
+      <div><small>Bisheriger Anschluss</small><strong>${escapeHtml(describeConnectionForReview(payload.connection))}</strong></div>
+      <div><small>Datenpunkte</small><strong>${points.length}</strong></div>
+      <div><small>Unit-ID(s)</small><strong>${escapeHtml(unitIds.join(', ') || '–')}</strong></div>`;
+    $('#templateKeepConnection').checked = false;
+    $('#templateUnitIdRow').classList.toggle('hidden', !singleUnit);
+    $('#templateUnitIdHintRow').classList.toggle('hidden', singleUnit);
+    if (singleUnit) $('#templateUnitIdOverride').value = unitIds[0];
+    else $('#templateUnitIdHint').textContent = `Mehrere Unit-IDs vorhanden (${unitIds.join(', ')}) – einzeln im Live-Monitor prüfen, keine Sammeländerung.`;
+    const dialog = $('#templateConnectionDialog');
+    dialog.returnValue = '';
+    const onClose = () => {
+      dialog.removeEventListener('close', onClose);
+      resolve(dialog.returnValue === 'confirm' ? {
+        keepConnection: $('#templateKeepConnection').checked,
+        unitIdOverride: singleUnit && Number.isInteger(Number($('#templateUnitIdOverride').value)) ? Number($('#templateUnitIdOverride').value) : null,
+      } : null);
+    };
+    dialog.addEventListener('close', onClose);
+    dialog.showModal();
+  });
+}
+
 async function loadDatabaseProfile(profileId, asTemplate) {
   try {
     const data = await profileLibraryRequest(`/api/profile-library/${encodeURIComponent(profileId)}`);
-    applyProfile(data.payload, false);
     if (asTemplate) {
+      const review = await openTemplateConnectionReview(data.payload);
+      if (!review) return; // Benutzer hat die Anschlussprüfung abgebrochen
+      applyProfile(data.payload, false);
       state.databaseProfileId = null;
       $('#profileProject').value = '';
+      if (!review.keepConnection) {
+        if (connection().transport === 'rtu_serial') window.setSerialSelection?.('');
+        else els.host.value = '';
+      }
+      if (review.unitIdOverride != null) state.points.forEach(point => { point.unit_id = review.unitIdOverride; });
       updateActiveProduct();
+      renderMonitor();
       saveLocal();
       selectTab('network');
-      toast('Gerätewissen geladen. Projekt, IP-Adresse und Unit-ID jetzt prüfen.');
+      toast(review.keepConnection
+        ? 'Gerätewissen inkl. bisherigem Anschluss geladen. Projekt, IP-Adresse und Unit-ID jetzt prüfen.'
+        : 'Gerätewissen geladen. Bisheriger Anschluss wurde NICHT übernommen – IP-Adresse bzw. COM-Port jetzt eintragen.');
     } else {
+      applyProfile(data.payload, false);
       state.databaseProfileId = profileId;
       updateActiveProduct(data.metadata);
       saveLocal();
@@ -226,6 +309,7 @@ $('#beginNewProductBtn').addEventListener('click', () => {
   state.databaseProfileId = null;
   state.points = [];
   state.histories = {};
+  state.pointState = {};
   $('#profileName').value = name;
   $('#profileManufacturer').value = $('#newProductManufacturer').value.trim();
   $('#profileModel').value = $('#newProductModel').value.trim();
@@ -282,6 +366,15 @@ function updateTransportHint() {
 }
 
 els.transport.addEventListener('change', () => { updateTransportHint(); saveLocal(); });
+
+// Unit-ID 0 ist bei Modbus RTU die Broadcast-Adresse – dort antwortet ein Gerät normalerweise nicht (TCP ist davon nicht betroffen)
+function warnBroadcastUnitId(value) {
+  if (Number(value) === 0 && els.transport.value !== 'tcp') {
+    toast('Unit-ID 0 ist bei Modbus RTU die Broadcast-Adresse – ein normales Gerät antwortet dort nicht.', true);
+  }
+}
+$('#decoderUnit').addEventListener('change', () => warnBroadcastUnitId($('#decoderUnit').value));
+$('#finderUnit').addEventListener('change', () => warnBroadcastUnitId($('#finderUnit').value));
 
 function markConnected(host, port, latency, transport, label = '') {
   state.connected = true;
@@ -564,30 +657,55 @@ function renderRegisterFinder() {
   const hideZero = $('#finderHideZero').checked;
   const hideFFFF = $('#finderHideFFFF').checked;
   const changedOnly = $('#finderChangedOnly').checked && hasBaseline;
+  const addressSearch = $('#finderAddressSearch').value.trim();
+  const searchAddress = addressSearch === '' ? null : Number(addressSearch);
   let changedCount = 0;
   const placeholderCount = data.found.filter(item => item.value === 0xFFFF).length;
   const candidateCount = data.found.length - placeholderCount;
-  const rows = data.found.map(item => {
+  const annotated = data.found.map(item => {
     const beforeItem = baseline.get(finderKey(item));
     const before = beforeItem?.value;
     const delta = before == null ? null : item.value - before;
     const changed = delta !== null && delta !== 0;
     if (changed) changedCount += 1;
     return {...item, before, delta, changed};
-  }).filter(item => {
+  });
+  const rows = annotated.filter(item => {
+    // 0 bzw. 0xFFFF trotz aktivem Filter zeigen, wenn eine Nachbaradresse auf einen zusammengehörenden
+    // Mehrregisterwert hindeutet – sonst würden zugehörige Rohregister unzugänglich
     const zeroMayBelongToPair = item.value === 0 && data.found.some(neighbour =>
       neighbour.function === item.function &&
       Math.abs(neighbour.address - item.address) === 1 &&
       neighbour.value !== 0 && neighbour.value !== 0xFFFF
     );
+    const ffffMayBelongToPair = item.value === 0xFFFF && data.found.some(neighbour =>
+      neighbour.function === item.function &&
+      Math.abs(neighbour.address - item.address) === 1 &&
+      neighbour.value !== 0 && neighbour.value !== 0xFFFF
+    );
     return (!hideZero || item.value !== 0 || zeroMayBelongToPair) &&
-      (!hideFFFF || item.value !== 0xFFFF) &&
-      (!changedOnly || item.changed);
+      (!hideFFFF || item.value !== 0xFFFF || ffffMayBelongToPair) &&
+      (!changedOnly || item.changed) &&
+      (searchAddress == null || item.address === searchAddress);
   });
 
   const summary = $('#finderSummary');
   summary.classList.remove('hidden');
-  summary.innerHTML = `<span><strong>${data.checked}</strong> Adressen/FC geprüft</span><span><strong>${data.requests ?? data.checked}</strong> Modbus-Abfragen</span><span><strong>${data.found.length}</strong> Register gefunden</span><span><strong>${candidateCount}</strong> Kandidaten</span><span><strong>${placeholderCount}</strong> FFFF-Platzhalter</span><span><strong>${data.unsupported}</strong> ungültige Adressen</span>${data.block_hits ? `<span><strong>${data.block_hits}</strong> Mehrregister-Blöcke</span>` : ''}${hasBaseline ? `<span><strong>${changedCount}</strong> Änderungen</span>` : ''}<span><strong>${data.duration_ms} ms</strong> Laufzeit</span>`;
+  summary.innerHTML = `<span><strong>${data.checked}</strong> Adressen/FC geprüft</span><span><strong>${data.requests ?? data.checked}</strong> Modbus-Abfragen</span><span><strong>${data.found.length}</strong> Register gefunden</span><span><strong>${candidateCount}</strong> Kandidaten</span><span><strong>${placeholderCount}</strong> Register mit 0xFFFF</span><span><strong>${data.unsupported}</strong> ungültige Adressen</span>${data.block_hits ? `<span><strong>${data.block_hits}</strong> Mehrregister-Blöcke</span>` : ''}${hasBaseline ? `<span><strong>${changedCount}</strong> Änderungen</span>` : ''}<span><strong>${data.duration_ms} ms</strong> Laufzeit</span>`;
+
+  const filterHint = $('#finderFilterHint');
+  const hiddenByFilter = data.found.length - rows.length;
+  const activeFilters = [hideZero && 'Nullwerte', hideFFFF && '0xFFFF', changedOnly && 'nur Änderungen', searchAddress != null && `Adresse ${searchAddress}`].filter(Boolean);
+  filterHint.classList.toggle('hidden', !activeFilters.length);
+  if (activeFilters.length) {
+    filterHint.innerHTML = `Aktive Filter: ${escapeHtml(activeFilters.join(', '))} · ${hiddenByFilter} von ${data.found.length} Treffern ausgeblendet. <button type="button" class="link-button" id="finderShowAllBtn">Alle anzeigen</button>`;
+    filterHint.querySelector('#finderShowAllBtn').addEventListener('click', () => {
+      $('#finderHideZero').checked = false; $('#finderHideFFFF').checked = false;
+      $('#finderChangedOnly').checked = false; $('#finderAddressSearch').value = '';
+      renderRegisterFinder();
+    });
+  }
+
   const tbody = $('#finderResults');
   tbody.innerHTML = rows.length ? '' : `<tr class="empty"><td colspan="7">${data.found.length ? 'Keine Register entsprechen dem aktuellen Filter.' : 'Keine gültigen Register im gewählten Bereich gefunden.'}</td></tr>`;
   rows.forEach(item => {
@@ -601,7 +719,9 @@ function renderRegisterFinder() {
       : '';
     const beforeText = item.before == null ? '–' : `${item.before} · 0x${item.before.toString(16).toUpperCase().padStart(4, '0')}`;
     const deltaText = item.delta == null ? '–' : (item.delta === 0 ? 'unverändert' : `${item.delta > 0 ? '+' : ''}${item.delta}`);
-    const valueText = item.value === 0xFFFF ? `${item.value}<small class="placeholder-note">wahrscheinlich unbenutzt</small>` : item.value;
+    const valueText = item.value === 0xFFFF
+      ? `${item.value}<small class="placeholder-note" title="Bedeutung erst mit Datentyp und Dokumentation festlegen: UInt16 65535, Int16 −1, Teil eines Mehrregisterwerts oder herstellerspezifischer Sonderwert.">UInt16 65535 · Int16 −1</small>`
+      : item.value;
     row.innerHTML = `<td>FC${String(item.function).padStart(2, '0')}</td><td><strong>${item.address}</strong>${blockNote}</td><td><code>${item.hex}</code></td><td>${valueText}</td><td>${beforeText}</td><td class="${item.changed ? 'good' : 'muted'}">${deltaText}</td><td><button class="table-action">Decoder</button></td>`;
     row.querySelector('button').addEventListener('click', () => {
       $('#decoderUnit').value = data.unit_id;
@@ -633,11 +753,64 @@ $('#clearSnapshotBtn').addEventListener('click', () => {
 });
 
 ['finderHideZero', 'finderHideFFFF', 'finderChangedOnly'].forEach(id => document.getElementById(id).addEventListener('change', renderRegisterFinder));
+$('#finderAddressSearch').addEventListener('input', renderRegisterFinder);
 
 $('#decoderFunction').addEventListener('change', () => {
   const bits = ['1', '2'].includes($('#decoderFunction').value);
   $('#decoderCount').max = bits ? 2000 : 125;
   if (bits && Number($('#decoderCount').value) < 8) $('#decoderCount').value = 8;
+});
+
+// Adressassistent: verschiedene Handbuch-/Referenzschemata in die tatsächlich gesendete Protokolladresse umrechnen.
+// Welches Schema zutrifft, muss aus der Gerätedokumentation stammen – die Umrechnung legt nichts automatisch fest.
+const ADDRESS_SCHEMES = {
+  direct0: {label: 'Direkte Protokolladresse (0-basiert)', base: 0, offset: 0, function: null},
+  direct1: {label: 'Direkte Registernummer (1-basiert)', base: 0, offset: 1, function: null},
+  ref400001: {label: 'Referenz „Holding Register ab 40001“', base: 40001, offset: 0, function: 3},
+  ref300001: {label: 'Referenz „Input Register ab 30001“', base: 30001, offset: 0, function: 4},
+  ref000001: {label: 'Referenz „Coils ab 00001“', base: 0, offset: 1, function: 1},
+  ref100001: {label: 'Referenz „Discrete Inputs ab 10001“', base: 10001, offset: 1, function: 2},
+};
+
+function computeAddressFromScheme(schemeKey, manualValue) {
+  const scheme = ADDRESS_SCHEMES[schemeKey];
+  if (!scheme || !Number.isInteger(manualValue)) return null;
+  const address = manualValue - scheme.base - scheme.offset;
+  return {address, function: scheme.function, valid: Number.isInteger(address) && address >= 0 && address <= 65535};
+}
+
+function updateAddressHelper() {
+  const manualValue = Number($('#addrHelperInput').value);
+  const schemeKey = $('#addrHelperScheme').value;
+  const result = $('#addrHelperResult');
+  const applyBtn = $('#addrHelperApplyBtn');
+  if ($('#addrHelperInput').value.trim() === '' || !Number.isFinite(manualValue)) {
+    result.textContent = 'Handbuch-/Referenzadresse eingeben, um die gesendete Protokolladresse zu sehen.';
+    applyBtn.disabled = true;
+    return;
+  }
+  const computed = computeAddressFromScheme(schemeKey, manualValue);
+  if (!computed || !computed.valid) {
+    result.textContent = `Ausserhalb des gültigen Adressraums (0–65535) für dieses Schema. Eingabe oder Schema prüfen.`;
+    applyBtn.disabled = true;
+    return;
+  }
+  const functionLabel = computed.function ? `FC${String(computed.function).padStart(2, '0')}` : $('#decoderFunction option:checked').textContent;
+  result.textContent = `Gesendete Adresse: ${computed.address} (0x${computed.address.toString(16).toUpperCase().padStart(4, '0')}) · ${functionLabel}`;
+  applyBtn.disabled = false;
+}
+
+['addrHelperInput', 'addrHelperScheme'].forEach(id => document.getElementById(id).addEventListener('input', updateAddressHelper));
+updateAddressHelper();
+
+$('#addrHelperApplyBtn').addEventListener('click', () => {
+  const manualValue = Number($('#addrHelperInput').value);
+  const computed = computeAddressFromScheme($('#addrHelperScheme').value, manualValue);
+  if (!computed || !computed.valid) return;
+  $('#decoderAddress').value = computed.address;
+  if (computed.function) $('#decoderFunction').value = String(computed.function);
+  $('#decoderFunction').dispatchEvent(new Event('change'));
+  toast(`Protokolladresse ${computed.address} übernommen.`);
 });
 
 $('#readBtn').addEventListener('click', () => readDecoder());
@@ -677,10 +850,19 @@ async function jumpDecoder(address) {
 $('#decoderPrevBtn').addEventListener('click', () => jumpDecoder(Number($('#decoderAddress').value) - 1));
 $('#decoderNextBtn').addEventListener('click', () => jumpDecoder(Number($('#decoderAddress').value) + 1));
 
+// Angefragte und von pymodbus tatsächlich dekodierte Unit-ID getrennt zeigen – hilft bei Gateway-/Adressierungsproblemen
+function formatUnitInfo(data) {
+  if (data.response_unit_id == null) return `Unit-ID angefragt ${data.unit_id} · Antwort-ID nicht verfügbar`;
+  return data.response_unit_id === data.unit_id
+    ? `Unit-ID angefragt ${data.unit_id} · Antwort ${data.response_unit_id} ✓`
+    : `Unit-ID angefragt ${data.unit_id} · Antwort ${data.response_unit_id} ⚠ weicht ab`;
+}
+
 function renderDecoding(data) {
   $('#decoderEmpty').classList.add('hidden');
   $('#decoderOutput').classList.remove('hidden');
   $('#readTimestamp').textContent = new Date(data.timestamp * 1000).toLocaleTimeString('de-CH');
+  $('#readUnitInfo').textContent = formatUnitInfo(data);
   const raw = $('#rawValues'); raw.innerHTML = '';
   const groups = $('#decodeGroups'); groups.innerHTML = '';
   $('#decoderPrevBtn').disabled = data.address <= 0;
@@ -938,6 +1120,10 @@ $('#pointDialog').addEventListener('click', event => {
   if (event.target === $('#pointDialog')) cancelPointDialog();
 });
 
+$('#templateConnectionDialog').addEventListener('click', event => {
+  if (event.target === $('#templateConnectionDialog')) $('#templateConnectionDialog').close('cancel');
+});
+
 $('#savePointBtn').addEventListener('click', event => {
   event.preventDefault();
   const name = $('#pointName').value.trim();
@@ -952,7 +1138,36 @@ $('#savePointBtn').addEventListener('click', event => {
   saveLocal(); renderMonitor(); selectTab('monitor'); toast('Datenpunkt wurde übernommen.');
 });
 
-function renderMonitor(values = {}) {
+function formatPointTime(timestamp) {
+  return timestamp ? new Date(timestamp * 1000).toLocaleTimeString('de-CH') : 'unbekannt';
+}
+
+// Zustand pro Datenpunkt: letzter guter Wert bleibt erhalten, auch wenn eine spätere Abfrage fehlschlägt
+function renderLiveValueCell(point, entry) {
+  const hints = entry.status === 'ok' && entry.hints?.length
+    ? `<small class="plausibility-hint" title="${escapeHtml(entry.hints.join(' '))}">⚠ ${escapeHtml(entry.hints[0])}</small>` : '';
+  const hasGoodValue = entry.lastGoodAt != null;
+  const goodValueText = hasGoodValue ? `${formatNumber(entry.lastGoodValue)} ${escapeHtml(point.unit)}` : '';
+  switch (entry.status) {
+    case 'ok':
+      return `${goodValueText}${hints}`;
+    case 'stopped':
+      return hasGoodValue
+        ? `${goodValueText}<small class="value-flag value-flag-stopped" title="Monitor gestoppt. Letzter Wert von ${formatPointTime(entry.lastGoodAt)}.">gestoppt · ${formatPointTime(entry.lastGoodAt)}</small>`
+        : '<small class="value-flag value-flag-stopped">gestoppt</small>';
+    case 'error':
+    case 'stale': {
+      const reason = escapeHtml(entry.errorMessage || 'Unbekannter Fehler');
+      if (!hasGoodValue) return `<small class="value-flag value-flag-error" title="${reason}">FEHLER</small>`;
+      const label = entry.status === 'stale' ? 'veraltet · Verbindung gestört' : 'veraltet';
+      return `${goodValueText}<small class="value-flag value-flag-error" title="${reason}">${label} seit ${formatPointTime(entry.lastGoodAt)}</small>`;
+    }
+    default:
+      return '–';
+  }
+}
+
+function renderMonitor() {
   els.pointCount.textContent = state.points.length;
   const tbody = $('#monitorResults');
   if (!state.points.length) {
@@ -961,18 +1176,21 @@ function renderMonitor(values = {}) {
   }
   tbody.innerHTML = '';
   state.points.forEach(point => {
-    const result = values[point.id];
+    const entry = state.pointState[point.id] || {status: 'never'};
     const row = document.createElement('tr');
     row.innerHTML = `
       <td><strong>${escapeHtml(point.name)}</strong><br><small class="muted">Unit-ID ${point.unit_id} · FC0${point.function}</small></td>
       <td>${point.address}</td>
       <td>${escapeHtml(point.data_type.toUpperCase())} · ${escapeHtml(point.order || 'BIT')}<br><small class="muted">Faktor ${point.scale} · Offset ${point.offset}</small>${Number(point.read_count || registerCount(point)) > registerCount(point) ? `<small class="block-read-note">liest Block ${point.read_start}–${Number(point.read_start) + Number(point.read_count) - 1} · Wert-Offset ${point.value_offset}</small>` : ''}</td>
-      <td class="live-value">${result ? (result.ok ? `${formatNumber(result.value)} ${escapeHtml(point.unit)}` : 'FEHLER') : '–'}${result?.hints?.length ? `<small class="plausibility-hint" title="${escapeHtml(result.hints.join(' '))}">⚠ ${escapeHtml(result.hints[0])}</small>` : ''}</td>
+      <td class="live-value">${renderLiveValueCell(point, entry)}</td>
       <td>${sparkline(state.histories[point.id] || [])}</td>
       <td class="row-actions">${[1, 3].includes(Number(point.function)) ? '<button class="write-button write-only" title="Wert schreiben (nur nach Freigabe)">✎</button>' : ''}<button class="delete-button" title="Datenpunkt entfernen">×</button></td>`;
-    row.querySelector('.write-button')?.addEventListener('click', () => window.openWriteDialog?.(point, result?.ok ? result.value : undefined));
+    row.querySelector('.write-button')?.addEventListener('click', () => window.openWriteDialog?.(point, entry.status === 'ok' ? entry.lastGoodValue : undefined));
     row.querySelector('.delete-button').addEventListener('click', () => {
-      state.points = state.points.filter(item => item.id !== point.id); delete state.histories[point.id]; saveLocal(); renderMonitor();
+      state.points = state.points.filter(item => item.id !== point.id);
+      delete state.histories[point.id];
+      delete state.pointState[point.id];
+      saveLocal(); renderMonitor();
     });
     tbody.appendChild(row);
   });
@@ -1001,7 +1219,24 @@ function stopPolling() {
     state.pollAbortController = null;
   }
   $('#pollBtn').textContent = 'Starten'; $('#monitorState').textContent = 'Monitor gestoppt';
+  // Werte bleiben stehen; "gestoppt" ist ein eigener, von Fehler/veraltet unterschiedener Zustand
+  state.points.forEach(point => {
+    const prev = state.pointState[point.id];
+    if (prev && prev.status !== 'never') state.pointState[point.id] = {...prev, status: 'stopped'};
+  });
+  renderMonitor();
   setActivity('Live-Monitor gestoppt.');
+}
+
+// Markiert alle Datenpunkte als veraltet, wenn die gesamte Abfrage fehlschlägt (z. B. Verbindungsabbruch) –
+// vorher zuletzt erfolgreich gelesene Werte bleiben dabei sichtbar statt kommentarlos zu verschwinden
+function markMonitorStale(message) {
+  state.points.forEach(point => {
+    const prev = state.pointState[point.id];
+    if (!prev || prev.status === 'never') return;
+    state.pointState[point.id] = {...prev, status: 'stale', errorMessage: message};
+  });
+  renderMonitor();
 }
 
 async function pollNow() {
@@ -1017,17 +1252,24 @@ async function pollNow() {
     const data = await response.json().catch(() => ({}));
     if (!response.ok || data.ok === false) throw new Error(data.error || `HTTP ${response.status}`);
     if (!state.polling) return;
-    const values = Object.fromEntries(data.points.map(item => [item.id, item]));
     data.points.forEach(item => {
       if (item.ok && typeof item.value === 'number' && Number.isFinite(item.value)) {
         const history = state.histories[item.id] ||= []; history.push(item.value); if (history.length > 60) history.shift();
       }
+      const prev = state.pointState[item.id];
+      state.pointState[item.id] = item.ok
+        ? {status: 'ok', lastGoodValue: item.value, lastGoodAt: data.timestamp, hints: item.hints || []}
+        : {
+          status: 'error', errorMessage: item.error,
+          lastGoodValue: prev?.lastGoodValue ?? null, lastGoodAt: prev?.lastGoodAt ?? null, hints: prev?.hints || [],
+        };
     });
-    renderMonitor(values);
-    $('#lastPoll').textContent = `Letzte Abfrage ${new Date(data.timestamp * 1000).toLocaleTimeString('de-CH')}`;
+    renderMonitor();
+    $('#lastPoll').textContent = `Letzte Abfrage ${formatPointTime(data.timestamp)}`;
     setActivity('Live-Abfrage erfolgreich abgeschlossen.');
   } catch (error) {
     if (error.name !== 'AbortError') {
+      markMonitorStale(error.message);
       setActivity(error.message, 'error');
       toast(error.message, true);
     }
@@ -1088,6 +1330,7 @@ function applyProfile(data, notify = true) {
     updateTransportHint();
   }
   state.points = data.points; state.histories = Object.fromEntries(state.points.map(point => [point.id, []]));
+  state.pointState = {};
   saveLocal(); renderMonitor(); updateActiveProduct(); if (notify) toast(`${state.points.length} Datenpunkte importiert.`);
 }
 
@@ -1587,3 +1830,4 @@ function escapeHtml(value) {
 
 updateTransportHint(); restoreLocal(); renderMonitor(); updateActiveProduct(); loadInterfaces(); refreshProfileLibrary(); loadAiSettings();
 loadCatalogTypes().then(loadCatalog);
+loadDeviceDatalists();
