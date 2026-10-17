@@ -136,6 +136,9 @@
 :root[data-theme="dark"] .alert.error{color:#d76776;background:#290a0f;border:1px solid #4e1921}
 :root[data-theme="dark"] .alert.info{color:#609bdd;background:#0a1729;border:1px solid #122a46}
 :root[data-theme="dark"] .plausibility-hint{color:#ffbc3d}
+:root[data-theme="dark"] .value-flag-error{color:#d76776}
+:root[data-theme="dark"] .value-flag-stopped{color:#909bad}
+:root[data-theme="dark"] .finder-filter-hint{color:#909bad}
 :root[data-theme="dark"] .meter-list-dialog{background:transparent}
 :root[data-theme="dark"] .meter-list-dialog::backdrop{background:rgba(184, 200, 224, 0.495)}
 /* dark-overrides.css */

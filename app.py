@@ -44,7 +44,7 @@ from modbus_core import (
 from profile_store import ProfileStore
 
 
-APP_VERSION = "0.5.1"
+APP_VERSION = "0.6.0"
 DEFAULT_PORT = 48722
 # Mitgelieferte Geräteeinträge; im Windows-Setup liegen sie neben dem Programmcode
 BUNDLED_CATALOG_DIR = Path(__file__).resolve().parent / "device-catalog-entries"

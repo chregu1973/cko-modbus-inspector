@@ -1,5 +1,5 @@
 #define AppName "CKO Modbus Inspector"
-#define AppVersion "0.5.1"
+#define AppVersion "0.6.0"
 #define AppPublisher "CKO Toolbox"
 #define AppExeName "CKO-Modbus-Inspector.exe"
 

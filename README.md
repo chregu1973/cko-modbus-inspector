@@ -309,6 +309,14 @@ Für RTU über TCP stattdessen `python demo_server.py --rtu-tcp` starten und im 
 
 - Windows-Build mit selbst übersetztem PyInstaller-Bootloader: weniger Fehlalarme von Virenscannern (Microsoft Defender meldete 0.5.0 fälschlich als «Wacatac.H!ml»). Funktional unverändert.
 
+## Änderungen in 0.6.0
+
+- Live-Monitor unterscheidet jetzt vier Zustände je Datenpunkt: noch nicht gelesen, aktuell, veraltet (nach Abfragefehler oder Verbindungsabbruch) und gestoppt. Der letzte erfolgreich gelesene Wert bleibt bei einem Fehler sichtbar und eindeutig als veraltet gekennzeichnet statt kommentarlos zu verschwinden; der Fehlergrund ist per Hover abrufbar. `0`, `false` und negative Werte werden dabei nie mit einem Fehler verwechselt.
+- Register-Finder: der Filter «FFFF-Platzhalter ausblenden» heisst jetzt «Rohregister mit 0xFFFF ausblenden», ist standardmässig aus und blendet Register, die zu einem benachbarten Mehrregisterwert gehören könnten, nicht mehr aus. Treffer mit `0xFFFF` zeigen zusätzlich die unsigned- und signed-Interpretation (`65535` bzw. `−1`). Aktive Filter sind jetzt sichtbar, inklusive Anzahl ausgeblendeter Treffer und einer «Alle anzeigen»-Aktion; eine gezielte Adresssuche ergänzt die Ergebnisliste.
+- «Für neues Projekt verwenden» zeigt vor der ersten Live-Abfrage eine Anschlussprüfung mit bisherigem Projekt, Anschluss und allen Unit-IDs. Der bisherige Anschluss wird dabei standardmässig nicht automatisch übernommen; bei mehreren Unit-IDs erfolgt keine pauschale Sammeländerung.
+- Angefragte und von pymodbus tatsächlich aus der Antwort dekodierte Unit-ID werden im Decoder getrennt angezeigt, inklusive Warnung bei einer Abweichung; Unit-ID 0 bei Modbus RTU wird als Broadcast-Adresse ausdrücklich eingeordnet.
+- Neuer Adressassistent im Decoder rechnet Handbuch- oder Referenzadressen (z. B. «Input Register ab 30001») in die tatsächlich gesendete Protokolladresse um, ohne gespeicherte Profile zu verändern. Hersteller und Modell lassen sich beim Anlegen eines neuen Geräts aus Profilbibliothek und Nachschlagewerk auswählen, Freitext bleibt weiterhin möglich.
+
 ## Datenquellen und Lizenzen
 
 - SunSpec-Modelle: SunSpec Alliance, Apache-2.0 – `data/SUNSPEC-LICENSE.txt`

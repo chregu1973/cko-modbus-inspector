@@ -463,6 +463,84 @@ class ReadFallbackTests(unittest.TestCase):
         self.assertIn("Code x", exception_text("x"))
 
 
+class ResponseUnitIdTests(unittest.TestCase):
+    """OPT-04: angefragte und von pymodbus tatsächlich dekodierte Unit-ID getrennt ausweisen."""
+
+    class RegistersWithDevId:
+        def __init__(self, registers, dev_id):
+            self.registers = registers
+            self.dev_id = dev_id
+
+        def isError(self):
+            return False
+
+    class RegistersWithoutDevId:
+        """Simuliert eine pymodbus-Version/Antwort ohne dev_id-Attribut."""
+
+        def __init__(self, registers):
+            self.registers = registers
+
+        def isError(self):
+            return False
+
+    class Client:
+        def __init__(self, response):
+            self._response = response
+
+        def connect(self):
+            return True
+
+        def close(self):
+            pass
+
+        def read_holding_registers(self, address, *, count=1, device_id=1):
+            return self._response
+
+    def test_response_unit_id_matches_requested_id(self):
+        response = self.RegistersWithDevId([1, 2], dev_id=10)
+        with patch("modbus_core._client", return_value=self.Client(response)):
+            result = read_values({
+                "connection": {"host": "127.0.0.1", "port": 502, "timeout_ms": 100},
+                "unit_id": 10, "function": 3, "address": 0, "count": 2,
+            })
+        self.assertEqual(result["unit_id"], 10)
+        self.assertEqual(result["response_unit_id"], 10)
+
+    def test_response_unit_id_reveals_a_mismatch(self):
+        response = self.RegistersWithDevId([1, 2], dev_id=5)
+        with patch("modbus_core._client", return_value=self.Client(response)):
+            result = read_values({
+                "connection": {"host": "127.0.0.1", "port": 502, "timeout_ms": 100},
+                "unit_id": 10, "function": 3, "address": 0, "count": 2,
+            })
+        self.assertEqual(result["unit_id"], 10)
+        self.assertEqual(result["response_unit_id"], 5)
+
+    def test_response_unit_id_is_none_when_pymodbus_does_not_provide_it(self):
+        response = self.RegistersWithoutDevId([1, 2])
+        with patch("modbus_core._client", return_value=self.Client(response)):
+            result = read_values({
+                "connection": {"host": "127.0.0.1", "port": 502, "timeout_ms": 100},
+                "unit_id": 10, "function": 3, "address": 0, "count": 2,
+            })
+        self.assertIsNone(result["response_unit_id"])
+
+    def test_poll_points_reports_response_unit_id_per_point(self):
+        response = self.RegistersWithDevId([21, 5], dev_id=10)
+        with patch("modbus_core._client", return_value=self.Client(response)):
+            result = poll_points({
+                "connection": {"host": "127.0.0.1", "port": 502, "timeout_ms": 100},
+                "points": [{
+                    "id": "p1", "unit_id": 10, "function": 3, "address": 0,
+                    "data_type": "uint16", "scale": 1, "offset": 0,
+                }],
+            })
+        point = result["points"][0]
+        self.assertTrue(point["ok"])
+        self.assertEqual(point["unit_id"], 10)
+        self.assertEqual(point["response_unit_id"], 10)
+
+
 class ProbeFramingTests(unittest.TestCase):
     def test_rtu_over_tcp_is_detected_when_tcp_framing_fails(self):
         with patch("modbus_core._probe_modbus_framing", side_effect=lambda host, port, timeout, rtu: rtu):
